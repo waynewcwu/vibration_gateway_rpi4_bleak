@@ -1,0 +1,16 @@
+[Unit]
+Description=Vibration Gateway water detection
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=@INSTALL_ROOT@/current/ework/water_detection
+ExecStart=@INSTALL_ROOT@/current/venv/bin/python -u water_detect_v2.1.py
+ExecStartPre=/bin/sleep 10
+Restart=always
+RestartSec=5
+User=root
+
+[Install]
+WantedBy=multi-user.target

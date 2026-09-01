@@ -6,21 +6,28 @@
 - If a new `codex/*` branch has no upstream, record the `git pull` result and verify `origin` with `git ls-remote --heads origin` before continuing.
 - Do not directly modify existing `v1.0`, `v2.0`, or `v3.0` tags.
 - After changes are complete, run tests and inspect `git diff`.
-- Do not commit `.env`, API keys, tokens, passwords, credentials, logs, or `offline_bundle/**/*.tar.gz`.
+- Do not commit `.env`, API keys, tokens, passwords, credentials, logs, archives, or generated dependency folders.
 - Do not merge `main` directly without confirmation.
 - Do not use old Codex conversation attachments or legacy folders as the latest source.
 - If the current working directory is not this repository, stop and report it.
 - Never commit or push directly from `main`; create a `codex/*` branch first for code changes.
 - Before any push, confirm the target branch and show the planned changes.
 
-## Release workflow
+## Command Boundaries
+
+Read-only commands are allowed when they inspect repository state, examples: `git status`, `git log`, `git diff`, `git show`, `git branch`, `git remote`, `git ls-files`, `rg`, and file reads.
+
+Ask for explicit confirmation before commands that change Git or GitHub state, including `git commit`, `git push`, `git tag`, `git merge`, branch deletion, release creation, or pull request creation. Never force push, rewrite history, delete tags, delete releases, or delete remote branches unless the user explicitly requests that exact action.
+
+## Release Workflow
 
 - When creating a new tag, follow the existing repository tag naming pattern and increment the version from the previous tag.
 - Before creating a tag, confirm the proposed tag name/version with the user and ask whether to use it or revise it.
 - After the user confirms that a change has been merged and confirms tag creation, create a GitHub Release directly from that tag.
+- Do not create a release tag for a local test artifact unless the user explicitly approves the final version and release.
 - If the user asks to keep AGENTS.md updates local, do not push those updates until the next approved `codex/*` branch push.
 
-## Python runtime
+## Python Runtime
 
 On Windows, use the Python launcher instead of `python`.
 
@@ -38,12 +45,18 @@ py -3.13 -m pip install -r requirements.txt
 
 Do not assume that python is available on PATH.
 
-## Project layout
+## Project Layout
 
 - `sourcecode/ework` is the Raspberry Pi deployment source tree for this project.
 - Preserve Python source files, shell scripts, systemd service files, PM2 config, `.ini`/`.conf` configuration files, frontend HTML/CSS/JS/images/libs, firmware `.bin` files, package manifests, and lockfiles needed to rebuild dependencies after clone.
-- Preserve `sourcecode/ework/Bluetooth/bt_frontend/node_modules/` because this project supports Raspberry Pi offline clone-and-run deployment and that dependency tree was generated on the RPi/ARM environment.
-- Do not replace the preserved frontend `node_modules/` from Windows or another non-RPi environment. If dependencies must change, update them on the RPi/ARM target or another matching ARM/Linux environment, then commit `package.json`, `package-lock.json`, and `node_modules/` together.
-- Do not commit other generated dependency folders, caches, logs, local IDE folders, nested `.git` directories copied from deployed source trees, credentials, or machine-local runtime state.
+- Keep `sourcecode/ework/Bluetooth/bt_frontend/package.json` and `sourcecode/ework/Bluetooth/bt_frontend/package-lock.json`; they are the source of truth for rebuilding frontend Node dependencies.
+- Do not commit `node_modules/`, Python virtual environments, downloaded wheels, caches, logs, local IDE folders, nested `.git` directories copied from deployed source trees, credentials, or machine-local runtime state.
+- The Raspberry Pi offline requirement is handled by release artifacts. A release artifact may include generated ARM64/aarch64 dependencies under its package `dependencies/` directory, but those generated dependencies must not be committed to Git.
 - Keep required runtime directories with `.gitkeep` when code expects the directory to exist after clone.
 - When service files reference an entrypoint that is missing from `sourcecode/ework`, report the mismatch before changing startup behavior.
+
+## Search and Review Hygiene
+
+- Do not recursively scan generated dependency or artifact directories unless the task is specifically about them.
+- Exclude at least these paths from normal searches: `**/node_modules/**`, `**/.venv/**`, `**/venv/**`, `**/__pycache__/**`, `dist/**`, `offline_bundle/**`, `offline_bundles/**`, `release-artifacts/**`, `release_artifacts/**`, and `sourcecode/ework/psutil/**` unless psutil itself is being maintained.
+- Prefer `rg --glob '!**/node_modules/**' --glob '!dist/**' --glob '!offline_bundle/**'` for broad searches.

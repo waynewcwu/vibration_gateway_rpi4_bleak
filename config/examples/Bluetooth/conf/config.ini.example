@@ -1,0 +1,14 @@
+[ReadMe]
+mflag = "rec":reset reconnect count / "change": add/delete device
+sx = numberID;Name;Mac
+
+[Modify_flag]
+mflag = default
+record = 0
+
+[device]
+s1 = 1;device-name;00:00:00:00:00:00
+
+[Toplayer]
+hostip = 0.0.0.0
+protocol = Modbus

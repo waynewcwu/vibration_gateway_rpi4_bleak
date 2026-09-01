@@ -1,0 +1,5 @@
+[Water_detect]
+water_level=4
+# unit: cm
+time_period=5
+# unit: second

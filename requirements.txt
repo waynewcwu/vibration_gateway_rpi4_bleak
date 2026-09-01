@@ -1,0 +1,14 @@
+# Runtime dependencies for Raspberry Pi services.
+# Build ARM64/aarch64 wheels with scripts/build_offline_package.sh before
+# installing on an offline Raspberry Pi.
+Adafruit-ADS1x15
+bleak
+bluepy
+Flask
+Flask-Cors
+modbus-tk
+paho-mqtt
+pyserial
+RPi.GPIO
+websocket-server
+xmodem

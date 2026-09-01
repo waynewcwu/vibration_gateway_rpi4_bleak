@@ -20,8 +20,13 @@ ENV/
 .coverage
 htmlcov/
 build/
-dist/
 *.egg-info/
+
+# Node dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
 # Logs and runtime scratch data
 *.log
@@ -41,20 +46,24 @@ sourcecode/ework/Bluetooth/bt_frontend/ping_record.txt
 # Local environment and secrets
 .env
 .env.*
-
-# Node dependencies
-node_modules/
-!sourcecode/ework/Bluetooth/bt_frontend/node_modules/
-!sourcecode/ework/Bluetooth/bt_frontend/node_modules/**
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
 
 # Local package/archive artifacts
+dist/
+offline_bundle/
+offline_bundles/
+release-artifacts/
+release_artifacts/
 *.tar
 *.tar.gz
 *.tgz
-offline_bundle/**/*.tar.gz
+*.zip
+*.sha256
+SHA256SUMS
 
 # Local backups generated during field maintenance
 *.backup
@@ -64,8 +73,6 @@ offline_bundle/**/*.tar.gz
 app.backup.*/
 **/app.backup.*/
 
-# Sourcecode deployment snapshot: keep source, config, service files, firmware,
-# static frontend assets, package manifests, lockfiles, and the RPi/ARM
-# bt_frontend/node_modules snapshot required for offline clone-and-run installs.
-# Ignore other generated dependency folders, caches, local IDE state, embedded
-# Git metadata, and logs.
+# Keep source code, manifests, lockfiles, service templates, config examples,
+# firmware images, docs, and scripts in Git. Generated dependencies belong in
+# offline release artifacts, not in the source repository.
