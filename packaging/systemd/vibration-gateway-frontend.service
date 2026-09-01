@@ -6,11 +6,13 @@ Wants=network-online.target
 [Service]
 Type=simple
 WorkingDirectory=@INSTALL_ROOT@/current/ework/Bluetooth/bt_frontend
-ExecStart=/usr/bin/node index.js
+ExecStart=/usr/bin/env node index.js
 Restart=always
 RestartSec=5
 User=root
 Environment=NODE_ENV=production
+Environment=BT_BIN_DIR=@INSTALL_ROOT@/current/ework/Bluetooth/Bin
+Environment=BT_LOG_DIR=@INSTALL_ROOT@/logs/Bluetooth
 
 [Install]
 WantedBy=multi-user.target

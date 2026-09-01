@@ -44,3 +44,18 @@ Git source repo 應保持乾淨：
 - `install_offline.sh`、`update_offline.sh`、`rollback.sh`、`uninstall.sh`
 
 這樣 Git 歷史可以長期維護，RPi 無網路時仍可由 release package 完整安裝。
+
+## Raspberry Pi 安裝配置
+
+預設安裝位置：
+
+```text
+/opt/vibration_gateway/
+├── releases/<version>-<timestamp>/
+├── current -> releases/<version>-<timestamp>
+├── config/
+├── logs/
+└── data/
+```
+
+每個 release 內的 Bluetooth／water detection 設定與 log 目錄會連到共用目錄。因此切換版本或 rollback 不會覆蓋現場設定，也不會把 log 與 runtime data 綁死在某一版 release。

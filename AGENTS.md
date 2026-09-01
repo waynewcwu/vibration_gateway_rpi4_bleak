@@ -45,6 +45,14 @@ py -3.13 -m pip install -r requirements.txt
 
 Do not assume that python is available on PATH.
 
+## Validation Workflow
+
+- After completing code changes, run the necessary validation before reporting completion.
+- Prefer the smallest relevant Python or Docker validation for the changed behavior. Do not perform a full rebuild solely for validation when a narrower check is sufficient.
+- When validation succeeds, report only a concise result summary; do not analyze or reproduce the complete log.
+- When validation fails, inspect and analyze the most relevant error output first. Do not read or dump large complete logs unless the focused output is insufficient to diagnose the failure.
+- Do not repeatedly run a full Docker build unless it is necessary to verify a material build or dependency change.
+
 ## Project Layout
 
 - `sourcecode/ework` is the Raspberry Pi deployment source tree for this project.

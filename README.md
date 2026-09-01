@@ -29,7 +29,7 @@ Raspberry Pi target:
 
 - Raspberry Pi OS 64-bit / ARM64
 - Python 3.11 compatible environment
-- Node.js available at `/usr/bin/node`
+- Node.js available on `PATH`
 - systemd
 - Bluetooth, GPIO, and required hardware permissions configured by the device image
 
@@ -53,7 +53,7 @@ The source repository is intentionally clean. Offline Raspberry Pi operation is 
 - Node dependencies under `dependencies/node/bt_frontend_node_modules`
 - systemd templates
 - installer/update/rollback/uninstall scripts
-- manifest and checksum metadata
+- file-list and per-file checksum manifests
 
 ## Build Offline Package
 
@@ -70,6 +70,7 @@ bash scripts/build_offline_package.sh v1.0.1
 ```
 
 The artifact is written to `dist/` and ignored by Git.
+The requested version must match `VERSION`, and the builder refuses to package uncommitted source changes so `BUILD_INFO` always identifies the exact Git commit.
 
 ## Install on Raspberry Pi
 
@@ -90,7 +91,7 @@ Extract the newer offline package and run:
 sudo ./update_offline.sh
 ```
 
-The installer creates a new release directory and preserves current runtime configuration files when an existing installation is present.
+The installer creates a new release directory and keeps site configuration, logs, and runtime data in shared directories outside individual releases. It verifies the package before installation and automatically restores the previous `current` release if systemd service verification fails.
 
 ## Rollback
 
@@ -108,13 +109,13 @@ sudo ./rollback.sh
 
 ## Uninstall
 
-Remove services while keeping installed files:
+Remove services and program releases while keeping site configuration, logs, and runtime data:
 
 ```bash
 sudo ./uninstall.sh
 ```
 
-Remove services and installed release files:
+Permanently remove services, releases, site configuration, logs, and runtime data:
 
 ```bash
 sudo ./uninstall.sh --purge

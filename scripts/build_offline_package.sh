@@ -7,6 +7,7 @@ VERSION_ARG="${1:-}"
 DIST_DIR="${REPO_ROOT}/dist"
 FRONTEND_DIR="${REPO_ROOT}/sourcecode/ework/Bluetooth/bt_frontend"
 REQUIREMENTS_FILE="${REPO_ROOT}/requirements.txt"
+VERSION_FILE="${REPO_ROOT}/VERSION"
 TMP_DIR=""
 
 usage() {
@@ -81,9 +82,15 @@ build_node_dependencies() {
 
 write_manifest() {
   local package_dir="$1"
+  local manifest_tmp="${TMP_DIR}/MANIFEST.txt"
   (
     cd "${package_dir}"
-    find . -type f | sort | sed 's#^\./##' > MANIFEST.txt
+    find . -type f ! -name 'MANIFEST.txt' ! -name 'MANIFEST.sha256' | sort | sed 's#^\./##' > "${manifest_tmp}"
+    mv "${manifest_tmp}" MANIFEST.txt
+    while IFS= read -r file; do
+      sha256sum "${file}"
+    done < MANIFEST.txt > MANIFEST.sha256
+    sha256sum MANIFEST.txt >> MANIFEST.sha256
   )
 }
 
@@ -104,8 +111,14 @@ main() {
   need_cmd node
 
   [[ -f "${REQUIREMENTS_FILE}" ]] || fail "Missing ${REQUIREMENTS_FILE}"
+  [[ -f "${VERSION_FILE}" ]] || fail "Missing ${VERSION_FILE}"
   [[ -f "${FRONTEND_DIR}/package.json" ]] || fail "Missing frontend package.json"
   [[ -f "${FRONTEND_DIR}/package-lock.json" ]] || fail "Missing frontend package-lock.json"
+
+  local source_version
+  source_version="$(tr -d '\r\n' < "${VERSION_FILE}")"
+  [[ "${VERSION_ARG}" == "v${source_version}" ]] || fail "Requested ${VERSION_ARG} does not match VERSION (${source_version})"
+  [[ -z "$(git -C "${REPO_ROOT}" status --porcelain --untracked-files=normal)" ]] || fail "Tracked or untracked source changes exist; commit them before building an artifact"
 
   local arch
   arch="$(uname -m)"
@@ -146,6 +159,7 @@ main() {
     echo "source_version=${clean_version}"
     echo "git_commit=$(git -C "${REPO_ROOT}" rev-parse HEAD)"
     echo "git_branch=$(git -C "${REPO_ROOT}" branch --show-current)"
+    echo "git_dirty=false"
     echo "target_arch=${arch}"
     echo "python_version=$(python3 --version)"
     echo "node_version=$(node --version)"
@@ -162,10 +176,12 @@ main() {
   (
     cd "${DIST_DIR}"
     sha256sum "${package_name}.tar.gz" > "${package_name}.tar.gz.sha256"
+    sha256sum "${package_name}.tar.gz" > SHA256SUMS
   )
 
   echo "Built: ${DIST_DIR}/${package_name}.tar.gz"
   echo "Checksum: ${DIST_DIR}/${package_name}.tar.gz.sha256"
+  echo "Checksum index: ${DIST_DIR}/SHA256SUMS"
 }
 
 main "$@"

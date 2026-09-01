@@ -46,6 +46,8 @@ bash scripts/build_offline_package.sh v1.0.1
 bash scripts/verify_offline_package.sh dist/vibration_gateway_rpi4_bleak-v1.0.1-linux-arm64.tar.gz
 ```
 
+`dist/SHA256SUMS` 與 artifact 專屬的 `.sha256` 檔都由 builder 產生。Package 內另有 `MANIFEST.sha256`，用來驗證解壓後每個檔案。
+
 ## PR
 
 push branch 後建立 PR，PR 內容至少包含：

@@ -27,9 +27,13 @@ check_file_in_dir() {
 
 verify_dir() {
   local dir="$1"
+  local manifest_output=""
+  local version=""
+
   check_file_in_dir "${dir}" "VERSION"
   check_file_in_dir "${dir}" "BUILD_INFO"
   check_file_in_dir "${dir}" "MANIFEST.txt"
+  check_file_in_dir "${dir}" "MANIFEST.sha256"
   check_file_in_dir "${dir}" "source/ework/Bluetooth/bleak_v2q1.py"
   check_file_in_dir "${dir}" "source/ework/Bluetooth/bt_webapi_v3.py"
   check_file_in_dir "${dir}" "source/ework/Bluetooth/bt_frontend/index.js"
@@ -38,9 +42,40 @@ verify_dir() {
   check_file_in_dir "${dir}" "dependencies/node/bt_frontend_node_modules"
   check_file_in_dir "${dir}" "systemd/vibration-gateway-bt.service"
   check_file_in_dir "${dir}" "install_offline.sh"
+  check_file_in_dir "${dir}" "update_offline.sh"
+  check_file_in_dir "${dir}" "rollback.sh"
+  check_file_in_dir "${dir}" "uninstall.sh"
+  check_file_in_dir "${dir}" "verify_offline_package.sh"
+
+  grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' "${dir}/VERSION" || fail "Invalid VERSION"
+  version="$(tr -d '\r\n' < "${dir}/VERSION")"
+  grep -Fxq "package_version=v${version}" "${dir}/BUILD_INFO" || fail "BUILD_INFO package version does not match VERSION"
+  grep -Fxq "source_version=${version}" "${dir}/BUILD_INFO" || fail "BUILD_INFO source version does not match VERSION"
+  grep -Eq '^target_arch=(aarch64|arm64)$' "${dir}/BUILD_INFO" || fail "BUILD_INFO is not ARM64"
+  grep -Eq '^git_commit=[0-9a-f]{40}$' "${dir}/BUILD_INFO" || fail "BUILD_INFO has no valid Git commit"
+  grep -Fxq 'git_dirty=false' "${dir}/BUILD_INFO" || fail "Artifact was not built from a clean Git worktree"
+
+  if ! manifest_output="$(cd "${dir}" && sha256sum -c MANIFEST.sha256 2>&1)"; then
+    echo "${manifest_output}" | tail -n 20 >&2
+    fail "Package manifest checksum failed"
+  fi
+
+  if ! (
+    cd "${dir}"
+    find . -type f ! -name 'MANIFEST.txt' ! -name 'MANIFEST.sha256' | sort | sed 's#^\./##' | diff - MANIFEST.txt >/dev/null
+  ); then
+    fail "Package file list does not match MANIFEST.txt"
+  fi
 
   if find "${dir}/source" -path '*/node_modules/*' -print -quit | grep -q .; then
     fail "Source tree contains node_modules; dependencies must live under dependencies/"
+  fi
+
+  find "${dir}/dependencies/python/wheelhouse" -type f -name '*.whl' -print -quit | grep -q . || fail "Python wheelhouse is empty"
+  find "${dir}/dependencies/node/bt_frontend_node_modules" -type f -print -quit | grep -q . || fail "Node dependency tree is empty"
+
+  if find "${dir}/dependencies/python/wheelhouse" -type f \( -name '*x86_64*' -o -name '*win32*' -o -name '*win_amd64*' \) -print -quit | grep -q .; then
+    fail "Python wheelhouse contains non-ARM64 platform packages"
   fi
 
   echo "Package directory OK: ${dir}"
@@ -49,6 +84,8 @@ verify_dir() {
 verify_archive() {
   local archive="$1"
   [[ -f "${archive}" ]] || fail "Package not found: ${archive}"
+
+  tar -tzf "${archive}" >/dev/null || fail "Archive integrity check failed"
 
   if [[ -f "${archive}.sha256" ]]; then
     (
@@ -64,6 +101,7 @@ verify_archive() {
   local package_dir
   package_dir="$(find "${TMP_DIR}" -mindepth 1 -maxdepth 1 -type d | head -n 1)"
   [[ -n "${package_dir}" ]] || fail "Archive did not contain a package directory"
+  [[ "$(find "${TMP_DIR}" -mindepth 1 -maxdepth 1 -type d | wc -l)" -eq 1 ]] || fail "Archive must contain exactly one package directory"
   verify_dir "${package_dir}"
 }
 

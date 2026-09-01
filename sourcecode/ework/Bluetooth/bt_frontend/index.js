@@ -7,12 +7,14 @@ const ip = require('ip')
 const formidable = require('formidable')
 const SocketServer = require('ws').Server
 
-const MCU_FOLDER_PATH="/home/pi/ework/Bluetooth/Bin/"
-const LOG_FOLDER_PATH="/home/pi/ework/Bluetooth/log/"
-const FRONTEND_LOG_PATH="frontend_logs.txt"
-const ERROR_LOG_PATH="error_log.txt"
-const PING_RECORD_PATH="ping_record.txt"
+const MCU_FOLDER_PATH=process.env.BT_BIN_DIR || path.resolve(__dirname, '..', 'Bin')
+const LOG_FOLDER_PATH=process.env.BT_LOG_DIR || path.resolve(__dirname, '..', 'log')
+const FRONTEND_LOG_PATH=path.join(LOG_FOLDER_PATH, "frontend_logs.txt")
+const ERROR_LOG_PATH=path.join(LOG_FOLDER_PATH, "error_log.txt")
+const PING_RECORD_PATH=path.join(LOG_FOLDER_PATH, "ping_record.txt")
 const PORT="8081"
+
+fs.mkdirSync(LOG_FOLDER_PATH, {recursive:true})
 
 var mWebSocket=[]
 var mPingTimer
@@ -179,7 +181,7 @@ app.post('/upload/file',(req, res) => {
         console.log("files info: "+ JSON.stringify(files))
 
         var oldpath = files.mcu_bin.path;
-        var newpath = MCU_FOLDER_PATH+ files.mcu_bin.name;//** Need to revise!
+        var newpath = path.join(MCU_FOLDER_PATH, files.mcu_bin.name)
         fs.rename(oldpath, newpath, function (err) {
             if(err) {
                 console.log(err);

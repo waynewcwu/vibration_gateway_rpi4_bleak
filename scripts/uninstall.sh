@@ -12,7 +12,8 @@ SERVICES=(
 
 usage() {
   echo "Usage: sudo $0 [--install-root PATH] [--purge]"
-  echo "--purge also removes installed release files."
+  echo "Default: remove services and releases; preserve config, logs, and data."
+  echo "--purge: permanently remove the entire install root, including config, logs, and data."
 }
 
 fail() {
@@ -24,7 +25,8 @@ parse_args() {
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --install-root)
-        INSTALL_ROOT="${2:-}"
+        [[ $# -ge 2 ]] || fail "--install-root requires a path"
+        INSTALL_ROOT="$2"
         shift 2
         ;;
       --purge)
@@ -40,30 +42,36 @@ parse_args() {
         ;;
     esac
   done
+
+  [[ "${INSTALL_ROOT}" == /* && "${INSTALL_ROOT}" != "/" ]] || fail "Install root must be a safe absolute path"
+}
+
+remove_services() {
+  command -v systemctl >/dev/null 2>&1 || return 0
+  local service
+  for service in "${SERVICES[@]}"; do
+    systemctl stop "${service}" >/dev/null 2>&1 || true
+    systemctl disable "${service}" >/dev/null 2>&1 || true
+    rm -f "/etc/systemd/system/${service}"
+  done
+  systemctl daemon-reload
 }
 
 main() {
   parse_args "$@"
   [[ "$(id -u)" -eq 0 ]] || fail "Run with sudo/root for uninstall"
-
-  if command -v systemctl >/dev/null 2>&1; then
-    for service in "${SERVICES[@]}"; do
-      systemctl stop "${service}" >/dev/null 2>&1 || true
-      systemctl disable "${service}" >/dev/null 2>&1 || true
-      rm -f "/etc/systemd/system/${service}"
-    done
-    systemctl daemon-reload
-  fi
+  remove_services
 
   if [[ "${PURGE}" == "true" ]]; then
-    if [[ "${INSTALL_ROOT}" == "/" || -z "${INSTALL_ROOT}" ]]; then
-      fail "Refusing to purge unsafe install root"
-    fi
+    echo "WARNING: Permanently removing releases, site config, logs, and runtime data under ${INSTALL_ROOT}" >&2
     rm -rf "${INSTALL_ROOT}"
-    echo "Removed ${INSTALL_ROOT}"
-  else
-    echo "Services removed. Installed files remain at ${INSTALL_ROOT}"
+    echo "Purged ${INSTALL_ROOT}"
+    return 0
   fi
+
+  rm -f "${INSTALL_ROOT}/current"
+  rm -rf "${INSTALL_ROOT}/releases"
+  echo "Program releases removed. Preserved: ${INSTALL_ROOT}/config, ${INSTALL_ROOT}/logs, ${INSTALL_ROOT}/data"
 }
 
 main "$@"
