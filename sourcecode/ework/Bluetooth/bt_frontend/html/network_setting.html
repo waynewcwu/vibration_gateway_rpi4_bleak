@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>BT3 Config</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" href="../libs/bootstrap/bootstrap-3.4.1-dist/css/bootstrap.min.css">
+        <script src="../libs/jquery/jquery.min.js"></script>
+        <script src="../libs/bootstrap/bootstrap-3.4.1-dist/js/bootstrap.min.js"></script>
+        <script src="../libs/js/common.js"></script>
+    </head>
+
+    <body>
+        <script>
+            var IP="";
+            const CLIENT_PORT="8081";
+            const SERVER_PORT="8082";
+            const WBSK_PORT = "8085";
+            let NWtype = "ETH";
+            $(document).ready(function() {
+                $.ajax({
+                    type:"post",
+                    url:"/get/ip",
+                    async:false,
+                    success:function(data) {
+                        IP=data;
+
+                        var webSocket = new WebSocket("ws://" + IP + ":" + WBSK_PORT + "/");
+                        webSocket.onopen = function() {
+                            console.log('WebSocket Client Connected');
+                        };
+
+                        webSocket.onmessage = function(e) {
+                            console.log("Received:" + e.data);
+                            var data = JSON.parse(e.data);
+                            var info = data.INFO;
+                            if(info) {
+                                var timestamp=getCurrentTime();
+                                var tag=getLogTag($("#panel_network").text());
+                                $.ajax({
+                                    type:"post",
+                                    url:"write/frontend_log",
+                                    data:{"frontend_log":tag + timestamp + " " + info + "\n"},
+                                    success:function(data) {
+                                        $("#log_history").append(timestamp + " " + info + "\n");
+                                    }
+                                });
+                            }
+                        }
+                    }
+                });
+
+                $.ajax({
+                    type:"post",
+                    url:getUrl("/get/config/network"),
+                    success:function(data) {
+                        console.log("data ==> " + data);
+                        var config=JSON.parse(data)
+                        $('#ip_address').val(config.IP)
+                        $('#netmask').val(config.NETMASK)
+                        $('#gateway').val(config.GATEWAY)
+
+                        if (config.NWTYPE=="ETH")
+                        {
+                            chooseEth()
+                        }
+                        if (config.NWTYPE=="WIFI")
+                        {
+                            choosewifi()
+                            $('#ssid').val(config.SSID)
+                            $('#pwd').val(config.PWD)
+                            $('#ssid').attr('disabled', true);
+                            $('#pwd').attr('disabled', true);
+                        }
+                        $('#ip_address').attr('disabled', true);
+                        $('#netmask').attr('disabled', true);
+                        $('#gateway').attr('disabled', true);                        
+                    }
+                });
+
+            })
+
+            function getUrl(path) {
+                return "http://" + IP + ":" + SERVER_PORT + path;
+            }
+
+            function resetToDefault() {
+                $.ajax({
+                    type:"post",
+                    url:getUrl("/to/default/reset"),
+                    success:function(data) {
+                        console.log("data ==> " + data);
+                    }
+                });
+                $('#resetToDefault').modal('hide');
+            }
+
+            function rebootMcuSetting() {
+                $.ajax({
+                    type:"post",
+                    url:getUrl("/mcu/setting/reboot"),
+                    success:function(data) {
+                        console.log("data ==> " + data);
+                    }
+                });
+                $('#resetMcuSetting').modal('hide');
+            }
+
+            //[+] Network [+]
+            function updateNetworkConfig() {
+                
+                $.ajax({
+                    type:"post",
+                    url:getUrl("/update/config/network"),
+                    data:JSON.stringify({
+                        "IP":$('#ip_address').val(),
+                        "NETMASK":$('#netmask').val(),
+                        "GATEWAY":$('#gateway').val(),
+                        "NWTYPE":NWtype,
+                        "SSID":$('#ssid').val(),
+                        "PWD":$('#pwd').val(),
+                    }),
+                    
+                    success:function(data) {
+                        console.log("data ==> " + data);
+                        $('#ip_address').attr('disabled', true);
+                        $('#netmask').attr('disabled', true);
+                        $('#gateway').attr('disabled', true);
+                        if (NWtype=='WIFI')
+                        {
+                            $('#ssid').attr('disabled', true);
+                            $('#pwd').attr('disabled', true);
+                        }
+                    }
+                });
+            }
+
+            function editNetworkConfig() {
+                $('#ip_address').attr('disabled', false);
+                $('#netmask').attr('disabled', false);
+                $('#gateway').attr('disabled', false);
+                $('#ssid').attr('disabled', false);
+                $('#pwd').attr('disabled', false);
+            }
+
+            function networkInfoChanged() {
+                if($("#ip_address").val()) {
+                    $("#btn_update_network").attr('disabled', false);
+                } else {
+                    $("#btn_update_network").attr('disabled', true);
+                }
+            }
+
+            function choosewifi() {
+
+                NWtype= "WIFI";
+                console.log("dd =>" + NWtype);
+                var ssid =  '<br id="n1"><div class="input-group" id="ssid_gp">'+
+                '<span class="input-group-addon">ssid</span>'+
+                '<input id="ssid" type="text" class="form-control" onkeyup="networkInfoChanged()" placeholder="wifi name">'+'</div>';
+                var pwd =  '<br id="n2"><div class="input-group" id="pwd_gp">'+
+                '<span class="input-group-addon">pwd</span>'+
+                '<input id="pwd" type="text" class="form-control" onkeyup="networkInfoChanged()" placeholder="wifi pwd">'+'</div>';
+                
+                $('.dropdown').after(ssid);
+                $('#ssid_gp').after(pwd);
+                $('#btn_wifi').attr('disabled', true);
+                $('#btn_eth').attr('disabled', false);
+     
+            }
+            function chooseEth() {
+                NWtype = "ETH";
+                $('#ssid_gp').remove();
+                $('#pwd_gp').remove();
+                $('#n1').remove();
+                $('#n2').remove();
+                console.log("dd =>" + NWtype);
+                $('#btn_wifi').attr('disabled', false);
+                $('#btn_eth').attr('disabled', true);
+     
+            }
+            
+            //[-] Network [-]
+        </script>
+
+        <div class="container" style="width:90%;font-family:Arial,Microsoft JhengHei;">
+            <div style="width:100%;margin-bottom:150px;">
+                <img src="../images/icon_umc_ble_gateway.png" style="float:left;"></img>
+                <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#resetToDefault" style="float:right;margin-top:15px;">RESET</button>
+                <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#resetMcuSetting" style="float:right;margin-top:15px;margin-right:10px;">RESTART</button>
+            </div>
+            
+            <hr>
+            <ul class="nav nav-tabs" style="font-size:18px;">
+                <li id="panel_ble"><a href="ble">BLE</a></li>
+                <li id="panel_mcu"><a href="mcu_setting">MCU OTA</a></li>
+                <li id="panel_network"  class="active"><a href="network_setting">Network Steup</a></li>
+                <li id="panel_connection"><a href="connection_status">Connecting Status</a></li>
+                <li id="panel_log"><a href="log_checking">Log Information</a></li>
+                <li id="panel_notes"><a href="notes">Notes</a></li>
+            </ul>
+
+            <div class="panel panel-success">
+                <div class="panel-heading">
+                    <span style="font-size:18px;">Network information</span>
+                </div>
+                <div class="panel-body" id="net_setting">
+                    
+                    <div class="dropdown">
+                        <button class="btn btn-warning dropdown-toggle" type="button" data-toggle="dropdown">Network Type
+                        <span class="caret"></span></button>
+                        <ul class="dropdown-menu">
+                          <li><button type="button" class="btn btn-primary" id="btn_wifi" style="margin-left:20px;width:120px;" onclick="choosewifi()">WiFi</button></li>
+                          <li class="divider"></li>
+                          <button type="button" class="btn btn-success" id="btn_eth" style="margin-left:20px;width:120px;" onclick="chooseEth()">Ethernet</button>
+                        </ul>
+                    </div>
+                    <br>
+                    <div class="input-group">
+                        <span class="input-group-addon">IP</span>
+                        <input id="ip_address" type="text" class="form-control" onkeyup="networkInfoChanged()" placeholder="IP Address">
+                    </div>
+                    <br>
+                    <div class="input-group">
+                        <span class="input-group-addon">Netmask</span>
+                        <input id="netmask" type="text" class="form-control" onkeyup="networkInfoChanged()" placeholder="Netmask">
+                    </div>
+                    <br>
+                    <div class="input-group">
+                        <span class="input-group-addon">Gateway</span>
+                        <input id="gateway" type="text" class="form-control" placeholder="Gateway">
+                    </div>
+                    <button type="button" class="btn btn-warning" id="btn_update_network" style="float:right;margin-top:15px;width:70px;" onclick="updateNetworkConfig()" disabled>Update</button>
+                    <button type="button" class="btn btn-warning" style="float:left;margin-top:15px;width:70px;" onclick="editNetworkConfig()">Edit</button>
+                </div>
+            </div>
+
+            <div class="panel panel-success" style="margin-top:20px;">
+                <div class="panel-heading">
+                    Logs
+                </div>
+
+                <div class="panel-body collapse in">
+                    <textarea id="log_history" class="md-textarea form-control" rows="9"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- [+] Modal resetToDefault [+] -->
+        <div class="modal fade" id="resetToDefault" role="dialog" style="font-family:Arial,Microsoft JhengHei;">
+            <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-body">
+                    <p style="font-size:18px;">Confirm reset?</p>
+                </div>
+
+                <div class="modal-footer" style="font-size:18px;">
+                    <button type="button" class="btn btn-default" onclick="resetToDefault()">yes</button>
+                    <button type="button" class="btn btn-default" data-dismiss="modal">no</button>
+                </div>
+            </div>
+            </div>
+        </div>
+        <!-- [-] Modal resetToDefault [-] -->
+
+        <!-- [+] Modal resetMcuSetting [+] -->
+        <div class="modal fade" id="resetMcuSetting" role="dialog" style="font-family:Arial,Microsoft JhengHei;">
+            <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-body">
+                    <p style="font-size:18px;">Make sure restart Raspberry pi?</p>
+                </div>
+
+                <div class="modal-footer" style="font-size:18px;">
+                    <button type="button" class="btn btn-default" onclick="rebootMcuSetting()">yes</button>
+                    <button type="button" class="btn btn-default" data-dismiss="modal">no</button>
+                </div>
+            </div>
+            </div>
+        </div>
+        <!-- [-] Modal resetMcuSetting [-] -->
+    </body>
+</html>

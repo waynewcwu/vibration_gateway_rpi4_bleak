@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>BT3 Config</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" href="../libs/bootstrap/bootstrap-3.4.1-dist/css/bootstrap.min.css">
+        <script src="../libs/jquery/jquery.min.js"></script>
+        <script src="../libs/bootstrap/bootstrap-3.4.1-dist/js/bootstrap.min.js"></script>
+        <script src="../libs/js/common.js"></script>
+    </head>
+
+    <body>
+        <script>
+            var IP="";
+            const CLIENT_PORT="8081";
+            const SERVER_PORT="8082";
+            var mAlarmDevice=[];
+
+            $(function() {
+                $.ajax({
+                    type:"post",
+                    url:"/get/ip",
+                    async:false,
+                    success:function(data) {
+                        IP=data;
+
+                        var webSocket = new WebSocket("ws://" + IP + ":" + CLIENT_PORT + "/");
+                        webSocket.onopen = function() {
+                            console.log('WebSocket Client Connected');
+                        };
+
+                        webSocket.onmessage = function(e) {
+                            console.log("Received:" + e.data);
+                            var data=JSON.parse(e.data)
+                            if(data.command=="start") {
+                                updateUIWhenStartPing(data.server_ip, data.mail_server_ip, data.period);
+                            }
+                            
+                            if(data.command=="stop") {
+                                updateUIWhenStopPing();
+                            }
+
+                            $("#log_history").append(data.message);
+                        }
+                    }
+                })
+
+                $.ajax({
+                    type:"post",
+                    url:"/is/pinging",
+                    async:false,
+                    success:function(data) {
+                        var server_ip=localStorage.getItem("connection_status_server_ip")
+                        if(server_ip) {
+                            $("#server_ip").val(server_ip)
+                        }
+
+                        var mail_server_ip=localStorage.getItem("connection_status_mail_server_ip")
+                        if(mail_server_ip) {
+                            $("#mail_server_ip").val(mail_server_ip)
+                        }
+
+                        var period=localStorage.getItem("connection_status_period")
+                        if(period) {
+                            $("#period").val(period)
+                        }
+
+                        if(data=="true") {
+                            $('#server_ip').attr('disabled', true);
+                            $('#mail_server_ip').attr('disabled', true);
+                            $('#period').attr('disabled', true);
+
+                            $('#edit_server_ip').attr('disabled', true);
+                            $('#edit_mail_server_ip').attr('disabled', true);
+                            $('#edit_period').attr('disabled', true);
+
+                            $('#start_ping').attr('disabled', true);
+                            $('#stop_ping').attr('disabled', false);
+                        } else {
+                            if(($("#server_ip").val()=="" && $("#mail_server_ip").val()=="") || $("#period").val()==="") {
+                                $("#start_ping").attr('disabled', true);
+                                $("#stop_ping").attr('disabled', true);
+                            } else {
+                                $("#start_ping").attr('disabled', false);
+                                $("#stop_ping").attr('disabled', true);
+                            }
+
+                            $('#edit_server_ip').attr('disabled', true);
+                            $('#edit_mail_server_ip').attr('disabled', true);
+                            $('#edit_period').attr('disabled', true);
+                        }
+                    }
+                })
+            })
+
+            function getUrl(path) {
+                return "http://" + IP + ":" + SERVER_PORT + path;
+            }
+
+            function resetToDefault() {
+                $.ajax({
+                    type:"post",
+                    url:getUrl("/to/default/reset"),
+                    success:function(data) {
+                        console.log("data ==> " + data);
+                    }
+                });
+                $('#resetToDefault').modal('hide');
+            }
+
+            function addAlarmItem() {
+                mAlarmDevice.push($('#alarm_device_id').val());
+                $('#alarm_device_info').html("");
+                var header = "<thead><tr><th>ID</th></tr></thead>"
+                $('#alarm_device_info').append(header);
+                $('#alarm_device_info').append("<tbody>");
+                
+                mAlarmDevice.sort(function(a,b) {
+                    return a.localeCompare(b);
+                })
+                        
+                for(var i=0;i<mAlarmDevice.length;i++) {
+                    var item = "<tr>" + 
+                               "<td>" + mAlarmDevice[i] + "</td>"  + 
+                               "</tr>";
+                    $('#alarm_device_info').append(item);
+                }
+                        
+                $('#alarm_device_info').append("</tbody>");
+            }
+
+            function startPing() {
+                var server_ip=$("#server_ip").val();
+                var mail_server_ip=$("#mail_server_ip").val();
+                var period=$("#period").val();
+
+                $.ajax({
+                    type:"post",
+                    url:"/start/ping",
+                    data:{"server_ip":server_ip,"mail_server_ip":mail_server_ip,"period":period},
+                    success:function(data) {
+                        updateUIWhenStartPing(server_ip, mail_server_ip, period);
+                    }
+                });
+            }
+
+            function stopPing() {
+                $.ajax({
+                    type:"post",
+                    url:"/stop/ping",
+                    data:{"ip":$("#server_ip").val()},
+                    success:function(data) {
+                        updateUIWhenStopPing();
+                    }
+                });
+            }
+
+            function updateUIWhenStartPing(server_ip, mail_server_ip, period) {
+                localStorage.setItem("connection_status_server_ip", server_ip);
+                localStorage.setItem("connection_status_mail_server_ip", mail_server_ip);
+                localStorage.setItem("connection_status_period", period);
+
+                $('#server_ip').val(server_ip);
+                $('#mail_server_ip').val(mail_server_ip);
+                $('#period').val(period);
+
+                $('#server_ip').attr('disabled', true);
+                $('#mail_server_ip').attr('disabled', true);
+                $('#period').attr('disabled', true);
+
+                $('#edit_server_ip').attr('disabled', true);
+                $('#edit_mail_server_ip').attr('disabled', true);
+                $('#edit_period').attr('disabled', true);
+
+                $('#start_ping').attr('disabled', true);
+                $('#stop_ping').attr('disabled', false);
+            }
+
+            function updateUIWhenStopPing() {
+                $('#edit_server_ip').attr('disabled', false);
+                $('#edit_mail_server_ip').attr('disabled', false);
+                $('#edit_period').attr('disabled', false);
+
+                $('#start_ping').attr('disabled', false);
+                $('#stop_ping').attr('disabled', true);
+            }
+
+            function connectionSettingChanged() {
+                var server_ip=$("#server_ip").val();
+                var mail_server_ip=$("#mail_server_ip").val();
+                var period=$("#period").val();
+                if((server_ip.length==0 && mail_server_ip.length==0) || period.length==0){
+                    $('#start_ping').attr('disabled', true);
+                    $('#stop_ping').attr('disabled', true);
+                } else {
+                    $('#start_ping').attr('disabled', false);
+                    $('#stop_ping').attr('disabled', true);
+                }
+            }
+
+            function editConnectionSetting(id) {
+                $("#"+id).attr('disabled', false);
+            }
+        </script>
+
+        <div class="container" style="width:90%;font-family:Arial,Microsoft JhengHei;">
+            <div style="width:100%;margin-bottom:150px;">
+                <img src="../images/icon_umc_ble_gateway.png" style="float:left;"></img>
+                <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#resetToDefault" style="float:right;margin-top:15px;">RESET</button>
+            </div>
+            
+            <hr>
+            <ul class="nav nav-tabs" style="font-size:18px;">
+                <li id="panel_ble"><a href="ble">BLE</a></li>
+                <li id="panel_mcu"><a href="mcu_setting">MCU OTA</a></li>
+                <li id="panel_network"><a href="network_setting">Network Steup</a></li>
+                <li id="panel_connection" class="active"><a href="connection_status">Connecting Status</a></li>
+                <li id="panel_log"><a href="log_checking">Log Information</a></li>
+                <li id="panel_notes"><a href="notes">Notes</a></li>
+            </ul>
+
+            <div style="float:left;width:50%;margin-top:10px;">
+                <div class="panel panel-success">
+                    <div class="panel-heading">
+                        <span style="font-size:18px;">Connect information setup</span>
+                    </div>
+                    <div class="panel-body" id="connection_setting">
+                        <div class="input-group" style="float:left;width:92%;">
+                            <span class="input-group-addon">Server IP</span>
+                            <input id="server_ip" type="text" class="form-control" onkeyup="connectionSettingChanged()" placeholder="Server IP">
+                        </div>
+                        <button type="button" id="edit_server_ip" class="btn btn-warning" style="width:6%;margin-left:2%;" onclick="editConnectionSetting('server_ip')">Edit</button>
+                        <br>
+                        <div class="input-group" style="float:left;width:92%;margin-top:20px;">
+                            <span class="input-group-addon">Mail IP</span>
+                            <input id="mail_server_ip" type="text" class="form-control" onkeyup="connectionSettingChanged()" placeholder="Mail IP">
+                        </div>
+                        <button type="button" id="edit_mail_server_ip" class="btn btn-warning" style="width:6%;margin-left:2%;margin-top:20px;" onclick="editConnectionSetting('mail_server_ip')">Edit</button>
+                        <br>
+                        <div class="input-group" style="float:left;width:92%;margin-top:20px;">
+                            <span class="input-group-addon">Period</span>
+                            <input id="period" type="text" class="form-control" onkeyup="connectionSettingChanged()" placeholder="Period in minutes">
+                        </div>
+                        <button type="button" id="edit_period" class="btn btn-warning" style="width:6%;margin-left:2%;margin-top:20px;" onclick="editConnectionSetting('period')">Edit</button>
+
+                        <div>
+                            <button type="button" class="btn btn-warning" id="start_ping" style="margin-top:20px;" onclick="startPing()">Start</button>
+                            <button type="button" class="btn btn-warning" id="stop_ping" style="margin-top:20px;margin-left:10px;" onclick="stopPing()">Stop</button>
+                        </div>
+                    </div>
+                </div>
+    
+                <div class="panel panel-success">
+                    <div class="panel-heading">
+                        <span style="font-size:18px;">Alarm List</span>
+                    </div>
+                    <div class="panel-body">
+                        <div class="input-group" style="float:left;width:92%;">
+                            <span class="input-group-addon">Employee ID</span>
+                            <input id="alarm_device_id" type="text" class="form-control" placeholder="Employee ID">
+                        </div>
+                        <button type="button" class="btn btn-warning" style="width:6%;margin-left:2%;" onclick="addAlarmItem()">Add</button>
+                        <div style="margin-top:20px;height:300px;overflow:auto;">
+                            <table class="table table-bordered" id="alarm_device_info"></table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel panel-success" style="float:right;width:49%;margin-top:10px;">
+                <div class="panel-heading">Logs</div>
+
+                <div class="panel-body collapse in">
+                    <textarea id="log_history" class="md-textarea form-control" rows="31" style="margin-top:6px;margin-bottom:6px;"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- [+] Modal resetToDefault [+] -->
+        <div class="modal fade" id="resetToDefault" role="dialog" style="font-family:Arial,Microsoft JhengHei;">
+            <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-body">
+                    <p style="font-size:18px;">Confirm reset?</p>
+                </div>
+
+                <div class="modal-footer" style="font-size:18px;">
+                    <button type="button" class="btn btn-default" onclick="resetToDefault()">yes</button>
+                    <button type="button" class="btn btn-default" data-dismiss="modal">no</button>
+                </div>
+            </div>
+            </div>
+        </div>
+        <!-- [-] Modal resetToDefault [-] -->
+    </body>
+</html>

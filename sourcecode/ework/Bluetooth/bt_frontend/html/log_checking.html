@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>BT3 Config</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" href="../libs/bootstrap/bootstrap-3.4.1-dist/css/bootstrap.min.css">
+        <script src="../libs/jquery/jquery.min.js"></script>
+        <script src="../libs/bootstrap/bootstrap-3.4.1-dist/js/bootstrap.min.js"></script>
+    </head>
+
+    <body>
+        <script>
+            var IP="";
+            const CLIENT_PORT="8081";
+            const SERVER_PORT="8082";
+
+            $(document).ready(function() {
+                $.ajax({
+                    type:"post",
+                    url:"/get/ip",
+                    async:false,
+                    success:function(data) {
+                        IP=data;
+                    }
+                });
+
+                $.ajax({
+                    type:"post",
+                    url:"/get/log_file_path",
+                    async:false,
+                    success:function(raw_data) {
+                        var data=JSON.parse(raw_data)
+                        var filenames=data.filenames
+                        mFilePath=data.path
+                        for(var i=0;i<filenames.length;i++) {
+                            console.log(filenames[i])
+                            $("#log_file_selector").append("<option>" + filenames[i] + "</option>");
+                        }
+                    }
+                });
+
+                $.ajax({
+                    type:"post",
+                    url:"/get/frontend_log",
+                    success:function(raw_data) {
+                        $("#frontend_logs").val(raw_data);
+                    }
+                });
+            })
+
+            function getUrl(path) {
+                return "http://" + IP + ":" + SERVER_PORT + path;
+            }
+
+            function resetToDefault() {
+                $.ajax({
+                    type:"post",
+                    url:getUrl("/to/default/reset"),
+                    success:function(data) {
+                        console.log("data ==> " + data);
+                    }
+                });
+                $('#resetToDefault').modal('hide');
+            }
+
+            function getFrontendLog() {
+                $.ajax({
+                    type:"post",
+                    url:getUrl("/get/frontend/log"),
+                    success:function(data) {
+                        console.log("data ==> " + data);
+                    }
+                });
+            }
+
+            function readAndDisplayLog() {
+                $.ajax({
+                    type:"post",
+                    url:"/get/log",
+                    data:{"path":$("#log_file_selector").children("option:selected").val()},
+                    success:function(log) {
+                        $("#backend_logs").val(log);
+                    }
+                });
+            }
+        </script>
+
+        <div class="container" style="width:90%;height:750px;font-family:Arial,Microsoft JhengHei;">
+            <div style="width:100%;margin-bottom:150px;">
+                <img src="../images/icon_umc_ble_gateway.png" style="float:left;"></img>
+                <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#resetToDefault" style="float:right;margin-top:15px;">RESET</button>
+            </div>
+            
+            <hr>
+            <ul class="nav nav-tabs" style="font-size:18px;">
+                <li id="panel_ble"><a href="ble">BLE</a></li>
+                <li id="panel_mcu"><a href="mcu_setting">MCU OTA</a></li>
+                <li id="panel_network"><a href="network_setting">Network Steup</a></li>
+                <li id="panel_connection"><a href="connection_status">Connecting Status</a></li>
+                <li id="panel_log" class="active"><a href="log_checking">Log Information</a></li>
+                <li id="panel_notes"><a href="notes">Notes</a></li>
+            </ul>
+
+            <div class="panel panel-success" style="float:left;width:49.5%;height:100%;">
+                <div class="panel-heading">
+                    <span style="font-size:18px;">Frontend Log</span>
+                </div>
+                <div class="panel-body">
+                    <textarea id="frontend_logs" class="md-textarea form-control" rows="33"></textarea>
+                </div>
+            </div>
+
+            <div class="panel panel-success" style="float:right;width:49.5%;height:100%;">
+                <div class="panel-heading">
+                    <span style="font-size:18px;">BLE gateway Log</span>
+                </div>
+                <div class="panel-body">
+                    <label style="font-size:18px;">Choose file:</label>
+                    <div>
+                        <select class="form-control" id="log_file_selector" style="float:left;width:88%;"></select>
+                        <button type="button" class="btn btn-warning" style="width:70px;margin-left:2%;width:10%;" onclick="readAndDisplayLog()">Confirm</button>
+                    </div>
+
+                    <p style="margin-top:15px;font-family:Arial;">Logs:</p>
+                    <textarea id="backend_logs" class="md-textarea form-control" rows="27"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- [+] Modal resetToDefault [+] -->
+        <div class="modal fade" id="resetToDefault" role="dialog" style="font-family:Arial,Microsoft JhengHei;">
+            <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-body">
+                    <p style="font-size:18px;">Confirm reset?</p>
+                </div>
+
+                <div class="modal-footer" style="font-size:18px;">
+                    <button type="button" class="btn btn-default" onclick="resetToDefault()">yes</button>
+                    <button type="button" class="btn btn-default" data-dismiss="modal">no</button>
+                </div>
+            </div>
+            </div>
+        </div>
+        <!-- [-] Modal resetToDefault [-] -->
+    </body>
+</html>

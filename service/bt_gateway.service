@@ -1,0 +1,16 @@
+[Unit]
+Description=Bluetooth Gateway Service
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/home/pi/ework/Bluetooth
+ExecStart=/usr/bin/python3 /home/pi/ework/Bluetooth/bleak_v2q1.py
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,14 @@
+[Unit]
+Description=Bluetooth Frontend Service
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/home/pi/ework/Bluetooth/bt_frontend
+ExecStart=/usr/bin/node /home/pi/ework/Bluetooth/bt_frontend/index.js
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

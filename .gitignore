@@ -1,0 +1,71 @@
+# OS/editor noise
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+.vs/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+env/
+ENV/
+.coverage
+htmlcov/
+build/
+dist/
+*.egg-info/
+
+# Logs and runtime scratch data
+*.log
+**/log/*
+**/logs/*
+!**/log/
+!**/logs/
+!**/log/.gitkeep
+!**/logs/.gitkeep
+sourcecode/ework/Bluetooth/bt_frontend/error_log.txt
+sourcecode/ework/Bluetooth/bt_frontend/frontend_logs.txt
+sourcecode/ework/Bluetooth/bt_frontend/ping_record.txt
+
+# Embedded repositories copied from deployed source trees
+**/.git/
+
+# Local environment and secrets
+.env
+.env.*
+
+# Node dependencies
+node_modules/
+!sourcecode/ework/Bluetooth/bt_frontend/node_modules/
+!sourcecode/ework/Bluetooth/bt_frontend/node_modules/**
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Local package/archive artifacts
+*.tar
+*.tar.gz
+*.tgz
+offline_bundle/**/*.tar.gz
+
+# Local backups generated during field maintenance
+*.backup
+*.bak
+*.bak.*
+*.backup.*
+app.backup.*/
+**/app.backup.*/
+
+# Sourcecode deployment snapshot: keep source, config, service files, firmware,
+# static frontend assets, package manifests, lockfiles, and the RPi/ARM
+# bt_frontend/node_modules snapshot required for offline clone-and-run installs.
+# Ignore other generated dependency folders, caches, local IDE state, embedded
+# Git metadata, and logs.

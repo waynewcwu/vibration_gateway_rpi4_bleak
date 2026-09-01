@@ -1,0 +1,14 @@
+[Unit]
+Description=Bluetooth Backend API Service
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/home/pi/ework/Bluetooth
+ExecStart=/usr/bin/python3 /home/pi/ework/Bluetooth/bt_webapi_v3.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

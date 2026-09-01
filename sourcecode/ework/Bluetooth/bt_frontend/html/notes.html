@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>BT3 Config</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" href="../libs/bootstrap/bootstrap-3.4.1-dist/css/bootstrap.min.css">
+        <script src="../libs/jquery/jquery.min.js"></script>
+        <script src="../libs/bootstrap/bootstrap-3.4.1-dist/js/bootstrap.min.js"></script>
+        <script src="../libs/js/common.js"></script>
+    </head>
+
+    <body>
+        <script>
+            //
+        </script>
+
+        <div class="container" style="width:90%;font-family:Arial,Microsoft JhengHei;">
+            <div style="width:35px;height:35px;background-color:black;border-radius:3px;position:fixed;bottom:2px;right:2px;font-size:16px;padding-top:6px;padding-left:3px;font-weight:bold;"><a href="#note_top">Top</a></div>
+            <div style="width:100%;margin-bottom:150px;" id="note_top">
+                <img src="../images/icon_umc_ble_gateway.png" style="float:left;"></img>
+            </div>
+            
+            <hr>
+            <ul class="nav nav-tabs" style="font-size:18px;">
+                <li id="panel_ble"><a href="ble">BLE</a></li>
+                <li id="panel_mcu"><a href="mcu_setting">MCU OTA</a></li>
+                <li id="panel_network"><a href="network_setting">Network Steup</a></li>
+                <li id="panel_connection"><a href="connection_status">Connecting Status</a></li>
+                <li id="panel_log"><a href="log_checking">Log Information</a></li>
+                <li id="panel_notes" class="active"><a href="notes">Notes</a></li>
+            </ul>
+
+            <div style="float:left;width:100%;margin-top:10px;">
+                <div class="panel panel-info">
+                    <div class="panel-heading">
+                        <span style="font-size:18px;">Introduction</span>
+                    </div>
+                    <div class="panel-body" style="font-size:16px;">
+                        <p><span style="color:red;">UMC Bluetooth Gateway</span> provides an user friendly web interface for bluetooth device operation. It also provides the additional functions for network setting, connection status checking and log checking.There are five pages in this system, the detail information are listed page by page as follows:</p>
+                        <p><a href="#notes_ble">1. BLE</a></p>
+                        <p><a href="#notes_mcu_setting">2. 更新燒錄MCU</a></p>
+                        <p><a href="#notes_network_setting">3. 設定區網</a></p>
+                        <p><a href="#notes_connection_status">4. 檢查對上連線狀態</a></p>
+                        <p><a href="#notes_log_checking">5. 查詢LOG</a></p>
+                    </div>
+                </div>
+
+                <div class="panel panel-info" id="notes_ble">
+                    <div class="panel-heading">
+                        <span style="font-size:18px;">BLE</span>
+                    </div>
+                    <div class="panel-body">
+                        <div>
+                            <h4>1. 設定藍芽配對</h4>
+                            <img src="../images/notes_ble_1.png" style="border:1px black solid;">
+                            <p style="font-size:16px;margin-top:10px;">1. The table list includes information of each bluetooth device. When user clicks the button <span style="color:red;">移除裝置</span> the checked devices from the table will be removed.</p>
+                            <p style="font-size:16px;margin-top:10px;">2. The button <span style="color:red;">新增裝置</span> is disabled until user fullfills these three input fields <span style="color:red;">ID, Name, MAC</span>. The input device will be added to the device list when user clicks <span style="color:red;">新增裝置</span> button.</p>
+                            <p style="font-size:16px;margin-top:10px;">3. The button <span style="color:red;">Scan設備</span> is for bluetooth device scanning.</p>
+                        </div>
+                        <hr>
+                        <div>
+                            <h4>2. 選擇對上protocol</h4>
+                            <img src="../images/notes_ble_2.png" style="border:1px black solid;">
+                            <p style="font-size:16px;margin-top:10px;">1. There are three protocols <span style="color:red;">Modbus, Restful, Mqtt</span> in the selection list. User clicks the <span style="color:red;">確定</span> button to set the protocol.</p>
+                            <p style="font-size:16px;margin-top:10px;">2. The button <span style="color:red;">重啟</span> is for rebooting mcu device to apply the new settings.</p>
+                        </div>
+                        <hr>
+                        <div>
+                            <h4>3. Logs</h4>
+                            <img src="../images/notes_ble_3.png" style="border:1px black solid;">
+                            <p style="font-size:16px;margin-top:10px;">1. The Logs block displays all the information sent from server side, it notifies user the ble operation is failed or succeed or any other status.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel panel-info" id="notes_mcu_setting">
+                    <div class="panel-heading">
+                        <span style="font-size:18px;">更新燒錄MCU</span>
+                    </div>
+                    <div class="panel-body">
+                        <div>
+                            <h4>1. 更新燒錄MCU</h4>
+                            <img src="../images/notes_mcu_1.png" style="border:1px black solid;">
+                            <p style="font-size:16px;margin-top:10px;">1. The button <span style="color:red;">燒錄</span> is disabled until user selects a file.</p>
+                            <p style="font-size:16px;margin-top:10px;">2. User has to click the selection list <span style="color:red;">選擇檔案</span> and choose a file before burning mcu.</p>
+                            <p style="font-size:16px;margin-top:10px;">3. After choosing a file, user has to check devices from the table list as the target.</p>
+                            <p style="font-size:16px;margin-top:10px;">4. Finally user clicks <span style="color:red;">燒錄</span> button to burn the selected file into the selected devices.</p>
+                        </div>
+                        <hr>
+                        <div>
+                            <h4>2. Logs</h4>
+                            <img src="../images/notes_mcu_2.png" style="border:1px black solid;">
+                            <p style="font-size:16px;margin-top:10px;">1. The Logs block displays all the information sent from server side, it notifies user the mcu operation is failed or succeed or any other status.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel panel-info" id="notes_network_setting">
+                    <div class="panel-heading">
+                        <span style="font-size:18px;">設定區網</span>
+                    </div>
+                    <div class="panel-body">
+                        <div>
+                            <h4>1. 設定區網</h4>
+                            <img src="../images/notes_network_1.png" style="border:1px black solid;">
+                            <p style="font-size:16px;margin-top:10px;">1. The button <span style="color:red;">Update</span> is disabled until user fullfills the input fields <span style="color:red;">IP, Netmask.</span></p>
+                            <p style="font-size:16px;margin-top:10px;">2. User clicks <span style="color:red;">Update</span> button to update the network setting.</p>
+                            <p style="font-size:16px;margin-top:10px;">3. After user updates network settings, all input fields are locked, user is able to click <span style="color:red;">Edit</span> button to unlock these input fields to revise the settings.</p>
+                        </div>
+                        <hr>
+                        <div>
+                            <h4>2. Logs</h4>
+                            <img src="../images/notes_network_2.png" style="border:1px black solid;">
+                            <p style="font-size:16px;margin-top:10px;">1. The Logs block displays all the information sent from server side, it notifies user the network setting operation is failed or succeed or any other status.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel panel-info" id="notes_connection_status">
+                    <div class="panel-heading">
+                        <span style="font-size:18px;">檢查對上連線狀態</span>
+                    </div>
+                    <div class="panel-body">
+                        <div>
+                            <h4>1. 設定區網</h4>
+                            <img src="../images/notes_connection_1.png" style="border:1px black solid;">
+                            <p style="font-size:16px;margin-top:10px;">1. This page is used to check the connection status by ping. User inputs <span style="color:red;">Server IP</span> and <span style="color:red;">Period</span> fields the disabled <span style="color:red;">Start</span> button will be enabled.</p>
+                            <p style="font-size:16px;margin-top:10px;">2. The unit of field <span style="color:red;">Period</span> is minute, it is the time interval to ping server IP.</p>
+                            <p style="font-size:16px;margin-top:10px;">3. The <span style="color:red;">Start</span> button and the <span style="color:red;">Stop</span> button is exclusive</p>
+                            <p style="font-size:16px;margin-top:10px;">4. All input fields and <span style="color:red;">Edit</span> buttons are disabled after user clicks Start button.</p>
+                            <p style="font-size:16px;margin-top:10px;">5. <span style="color:red;">Edit</span> buttons are enabled after user clicks <span style="color:red;">Stop</span> button. User can clicks <span style="color:red;">Edit</span> button to edit the corresponding input field.</p>
+                        </div>
+                        <hr>
+                        <div>
+                            <h4>2. Alarm清單</h4>
+                            <img src="../images/notes_connection_2.png" style="border:1px black solid;">
+                            <p style="font-size:16px;margin-top:10px;">Not implement yet.</p>
+                        </div>
+                        <hr>
+                        <div>
+                            <h4>3. Logs</h4>
+                            <img src="../images/notes_connection_3.png" style="border:1px black solid;">
+                            <p style="font-size:16px;margin-top:10px;">1. The information to ping the <span style="color:red;">Server IP</span> is displayed here.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel panel-info" id="notes_log_checking">
+                    <div class="panel-heading">
+                        <span style="font-size:18px;">查詢LOG</span>
+                    </div>
+                    <div class="panel-body">
+                        <div>
+                            <h4>1. 查詢前端Log</h4>
+                            <img src="../images/notes_log_1.png" style="border:1px black solid;">
+                            <p style="font-size:16px;margin-top:10px;">1. Logs produced from page <span style="color:red;">BLE, 更新燒錄MCU, 設定區網</span> are collected and displayed in this block.</p>
+                        </div>
+                        <hr>
+                        <div>
+                            <h4>2. 查詢後端Log</h4>
+                            <img src="../images/notes_log_2.png" style="border:1px black solid;">
+                            <p style="font-size:16px;margin-top:10px;">1. Logs produced from backend server are saved as a file. User can browse all log file name by click <span style="color:red;">選擇檔案</span> and choose one of it.</p>
+                            <p style="font-size:16px;margin-top:10px;">2. After that, user has to click <span style="color:red;">Confirm</span> button and the log content will be showed in this block.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>

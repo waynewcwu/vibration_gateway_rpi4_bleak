@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>BT3 Config</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" href="../libs/bootstrap/bootstrap-3.4.1-dist/css/bootstrap.min.css">
+        <script src="../libs/jquery/jquery.min.js"></script>
+        <script src="../libs/bootstrap/bootstrap-3.4.1-dist/js/bootstrap.min.js"></script>
+        <script src="../libs/js/common.js"></script>
+
+        <style type="text/css">
+            #overlay {
+                background-color:rgba(200, 200, 200, 0.3);
+                z-index:999;
+                position:absolute;
+                left:0;
+                top:0;
+                width:100%;
+                height:100%;
+                display:none;
+            }
+        </style>
+    </head>
+
+    <body>
+        <script>
+            var IP="";
+            const CLIENT_PORT="8081";
+            const SERVER_PORT="8082";
+            const WBSK_PORT = "8085";
+            const BACKGROUND_COLOR_CHECKED="#CCD9FF";
+            const BACKGROUND_COLOR_UNCHECKED="#FFFFFF";
+            const BACKGROUND_COLOR_FLASH_NG="#9300FF";
+            const BACKGROUND_COLOR_FLASH_FAIL="#FFB3B3";
+            const BACKGROUND_COLOR_FLASH_OK="#99FF99";
+            var mFilePath="";
+            var up_ongoing = false;
+
+            $(document).ready(function() {
+                $.ajax({
+                    type:"post",
+                    url:"/get/ip",
+                    async:false,
+                    success:function(data) {
+                        IP=data;
+
+                        var webSocket = new WebSocket("ws://" + IP + ":" + WBSK_PORT + "/");
+                        webSocket.onopen = function() {
+                            console.log('WebSocket Client Connected');
+                        };
+
+                        webSocket.onmessage = function(e) {
+                            console.log("Received:" + e.data);
+                            var data = JSON.parse(e.data);
+                            var info = data.INFO;
+                            if(info) {
+                                var timestamp=getCurrentTime();
+                                var tag=getLogTag($("#panel_mcu").text());
+                                $.ajax({
+                                    type:"post",
+                                    url:"write/frontend_log",
+                                    data:{"frontend_log":tag + timestamp + " " + info + "\n"},
+                                    success:function(data) {
+                                        $("#log_history").append(timestamp + " " + info + "\n");
+                                    }
+                                });
+                            }
+                            var updating = data.UPDATE;
+                            if (updating=="on")
+                            {  
+                                up_ongoing = true;
+                                launchBurningProgressbar()
+                            }
+                            if (updating=="off")
+                            {
+                                up_ongoing = false;
+                                lockUIByAllDeviceStatus()
+                            }
+                            
+                            
+                            var flashed_ok=data.FLASHED_OK;
+                            if(flashed_ok) {
+                                $("table>tbody>tr").each(function() {
+                                    var $tr=$(this);
+                                    var $td=$tr.find("td");
+                                    var checkbox=$tr.find('[type="checkbox"]');
+                                    if(flashed_ok==$td.eq(1).text()) {
+                                        $tr.css('background-color',BACKGROUND_COLOR_FLASH_OK)
+                                        checkbox.prop('checked', false)
+                                    }
+                                })
+                                $("#overlay").hide()
+                            }
+
+                            var flashed_ng=data.FLASHED_NG;
+                            if(flashed_ng) {
+                                $("table>tbody>tr").each(function() {
+                                    var $tr=$(this);
+                                    var $td=$tr.find("td");
+                                    var checkbox=$tr.find('[type="checkbox"]');
+                                    if(flashed_fail==$td.eq(1).text()) {
+                                        $tr.css('background-color',BACKGROUND_COLOR_FLASH_NG)
+                                    }
+                                })
+                            }
+                            
+                            var flashed_fail=data.FLASHED_FAIL;
+                            if(flashed_fail) {
+                                $("table>tbody>tr").each(function() {
+                                    var $tr=$(this);
+                                    var $td=$tr.find("td");
+                                    var checkbox=$tr.find('[type="checkbox"]');
+                                    if(flashed_fail==$td.eq(1).text()) {
+                                        $tr.css('background-color',BACKGROUND_COLOR_FLASH_FAIL)
+                                        checkbox.prop('checked', false)
+                                    }
+                                })
+                                $("#overlay").hide()
+                                //lockUIByAllDeviceStatus()
+                            }
+                        }
+                    }
+                });
+
+                refreshMcuFileSelector();
+                getMcuFilesInfo();
+            })
+
+            function getUrl(path) {
+                return "http://" + IP + ":" + SERVER_PORT + path;
+            }
+
+            function resetToDefault() {
+                $.ajax({
+                    type:"post",
+                    url:getUrl("/to/default/reset"),
+                    success:function(data) {
+                        console.log("data ==> " + data);
+                    }
+                });
+                $('#resetToDefault').modal('hide');
+            }
+
+            //[+] MCU [+]
+            function refreshMcuFileSelector() {
+                $("#mcu_file_selector").html("");                
+                $.ajax({
+                    type:"post",
+                    url:"/get/mcu_file_path",
+                    async:false,
+                    success:function(raw_data) {
+                        var data=JSON.parse(raw_data)
+                        var filenames=data.filenames
+                        mFilePath=data.path
+                        $("#mcu_file_selector").append("<option></option>")
+                        for(var i=0;i<filenames.length;i++) {
+                            console.log(filenames[i])
+                            $("#mcu_file_selector").append("<option>" + filenames[i] + "</option>")
+                        }
+                    }
+                });
+            }
+
+            function getMcuFilesInfo() {
+                $.ajax({
+                    type:"post",
+                    url:getUrl("/bluetooth/device/read"),
+                    success:function(raw_data) {
+                        $('#target_device_info').html("");
+                        var header = "<thead><tr><th>Item</th><th>ID</th><th>Name</th><th>MAC</th></tr></thead>"
+                        $('#target_device_info').append(header);
+                        $('#target_device_info').append("<tbody>");
+                
+                        var data = JSON.parse(raw_data);
+                        data.sort(function (a, b) {
+                            return a.ID.localeCompare(b.ID);
+                        })
+                        for(var i=0;i<data.length;i++) {
+                            var item = "<tr>" + 
+                                       "<td><input type='checkbox' class='bluetoothDeviceCheckbox' onchange=bluetoothDeviceChanged() style='width:16px;height:16px;'></td>" +
+                                       "<td>" + data[i].ID   + "</td>"  + 
+                                       "<td>" + data[i].NAME + "</td>"  + 
+                                       "<td>" + data[i].MAC  + "</td>"  + 
+                                       "</tr>";
+                            $('#target_device_info').append(item);
+                        }
+                        
+                        $('#target_device_info').append("</tbody>");
+                    }
+                });
+            }
+
+            function bluetoothDeviceChanged() {
+                $("table>tbody>tr").each(function () {
+                    var $tr = $(this);
+                    if($tr.find(".bluetoothDeviceCheckbox").is(":checked")) {
+                        $tr.css('background-color',BACKGROUND_COLOR_CHECKED)
+                    } else {
+                        $tr.css('background-color',BACKGROUND_COLOR_UNCHECKED)
+                    }
+                });
+            }
+
+            function bleota() {
+                //lockUIByAllDeviceStatus()
+                //launchBurningProgressbar()
+                var infos=[];
+                $("table>tbody>tr").each(function() {
+                    var $tr = $(this);
+                    if($tr.find(".bluetoothDeviceCheckbox").is(":checked")) {
+                        var $td = $tr.find("td");
+                        var item={};
+                        item["ID"]=$td.eq(1).text();
+                        item["NAME"]=$td.eq(2).text();
+                        item["MAC"]=$td.eq(3).text();
+                        item["FILEPATH"]=mFilePath + $("#mcu_file_selector").children("option:selected").val();
+                        infos.push(item);
+                    }
+                })
+
+                if(infos.length>0) {
+                    console.log("info==>"+JSON.stringify(infos));
+                    $.ajax({
+                        type:"post",
+                        url:getUrl("/bleota"),
+                        data:JSON.stringify(infos),
+                        success:function(data) {
+                            console.log("data ==> " + data);
+                        }
+                    });
+                }
+                $('#startToFlashMcu').modal('hide');
+            }
+
+            function mcuFileChanged() {
+                if($("#mcu_file_selector").val()) {
+                    $("#btn_bleota").attr('disabled', false);
+                } else {
+                    $("#btn_bleota").attr('disabled', true);
+                }
+            }
+
+            function mcuFileUpload() {
+                var file = $('#mcu_file_upload_selector')[0].files[0];                
+                let form_data = new FormData();
+                form_data.append("mcu_bin", file);                
+                $.ajax({
+                    url: '/upload/file',
+                    cache: false,
+                    contentType: false,
+                    processData: false,
+                    data: form_data,
+                    type: 'post',
+                    success: function(data) {
+                        refreshMcuFileSelector();
+                        $("#mcu_file_upload_alert").text(data);
+                        $("#mcu_file_upload_alert").css("display","block");
+                        setTimeout(function(){
+                            $("#mcu_file_upload_alert").css("display","none");
+                        }, 3000);
+                    }
+                });
+            }
+
+            function mcuFileUploadChanged() {
+                if($("#mcu_file_upload_selector").val()) {
+                    var filename=$("#mcu_file_upload_selector").val();
+                    filename=filename.split("\\")[2];
+                    $("#mcu_upload_file_name").text(filename);
+                    $("#mcu_upload_file_name").css('border', '1px solid gray');
+                    $("#mcu_upload_file_name").css("border-radius","4px");
+                    $("#btn_file_upload").attr('disabled', false);
+                } else {
+                    $("#btn_file_upload").attr('disabled', true);
+                }
+            }
+
+            function launchBurningProgressbar() {
+                $("#overlay_title").text("Blocked")
+                $('.progress-bar').css('width', '0%').attr('aria-valuenow', 0)
+                $('.progress-bar').text('0%')
+
+                $('#progress_panel').css('margin-top',screen.height/3);
+                $('#progress_panel').css('margin-left','25%');
+                $("#overlay").show()
+                $.ajax({
+                    url: '/get/mcu_file_size',
+                    data: {"mcu_file_name":$("#mcu_file_selector").val()},
+                    type: 'post',
+                    success: function(file_size) {
+                        var value=0
+                        var total_time_in_secs = file_size/220
+                        //var total_time_in_secs = file_size/896
+                        var total_time_in_mins = total_time_in_secs/60
+                        var estimated_finish_time = new Date(Date.now()+(total_time_in_secs)*1000)
+                        estimated_finish_time = estimated_finish_time.getFullYear()  + "-" + 
+                                                (estimated_finish_time.getMonth()+1) + "-" + 
+                                                estimated_finish_time.getDate()      + " " + 
+                                                estimated_finish_time.getHours()     + ":" + 
+                                                estimated_finish_time.getMinutes()   + ":" + 
+                                                estimated_finish_time.getSeconds()
+                        $('#estimated_finish_time').text("Estimated finish time:" + estimated_finish_time)
+                        $('.progress-bar').attr('aria-valuemax', total_time_in_mins)
+                        
+                        var id = setInterval(function() {
+                            if (up_ongoing){
+                                value++
+                                //console.log(value);
+                                var progress = Math.round((value/total_time_in_mins/60*100))
+                                if(progress>100) {
+                                    progress=100
+                                }
+                                $('.progress-bar').css('width', progress + '%').attr('aria-valuenow', value)
+                                $('.progress-bar').text(progress + '%')
+                                if(value>=total_time_in_mins*60) {
+                                    clearInterval(id)   
+                                    $("#overlay_title").text("Finished")
+                                    setTimeout(function(){$("#overlay").hide()}, 3000)
+                                }
+                            }
+                            else
+                            {
+                                value = 0;
+                                clearInterval(id) ;
+                            }
+                        }, 1*1000)                        
+                    }
+                });
+                
+            }
+
+            function lockUIByAllDeviceStatus() {
+                var disabled=false
+                $("table>tbody>tr").each(function() {
+                    var $tr=$(this);
+                    if($tr.find(".bluetoothDeviceCheckbox").is(":checked")) {
+                        disabled=true
+                    }
+                })
+
+                if(disabled) {
+                    $("#overlay").show()
+                } else {
+                    $("#overlay").hide()
+                }
+            }
+            //[-] MCU [-]
+        </script>
+
+        <div class="container" style="width:90%;font-family:Arial,Microsoft JhengHei;">
+            <div id="overlay">
+                <p id="overlay_title" style="color:red;font-size:25px;font-family:Helvetica;margin-top:10px;margin-left:10px;">Blocked</p>
+                <div id="progress_panel" style="background-color:#0099cc;width:50%;height:80px;border-radius:10px;">
+                    <p id="estimated_finish_time" style="color:#EEEEEE;margin-left:10px;padding-top:10px;font-size:20px;"></p>
+                    <div class="progress" style="margin:10px;">
+                        <div class="progress-bar progress-bar-danger progress-bar-striped" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="0"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="width:100%;margin-bottom:150px;">
+                <img src="../images/icon_umc_ble_gateway.png" style="float:left;"></img>
+                <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#resetToDefault" style="float:right;margin-top:15px;">RESET</button>
+            </div>
+            
+            <hr>
+            <ul class="nav nav-tabs" style="font-size:18px;">
+                <li id="panel_ble"><a href="ble">BLE</a></li>
+                <li id="panel_mcu"  class="active"><a href="mcu_setting">MCU OTA</a></li>
+                <li id="panel_network"><a href="network_setting">Network Steup</a></li>
+                <li id="panel_connection"><a href="connection_status">Connecting Status</a></li>
+                <li id="panel_log"><a href="log_checking">Log Information</a></li>
+                <li id="panel_notes"><a href="notes">Notes</a></li>
+            </ul>
+
+            <div style="float:left;width:50%;height:730px;margin-top:10px;">
+                <div class="panel panel-success">
+                    <div class="panel-heading">
+                        <span style="font-size:18px;">Upload File</span>
+                    </div>
+                    <div class="panel-body" id="mcu_setting">
+                        <label for="mcu_file_upload_selector">
+                            <div style="font-size:16px;">
+                                <p style="float:left;text-align:center;padding:5px;color:#FFFFEE;width:80px;height:35px;border:1px gray solid;border-radius:4px;background-color: #66b3ff;">Browse</p>
+                                <p id="mcu_upload_file_name" style="float:right;text-align:center;padding:8px;height:35px;margin-left:10px;"></p>
+                            </div>
+                            <input type="file" id="mcu_file_upload_selector" accept=".bin" onchange="mcuFileUploadChanged()" style="display:none;"/>
+                        </label>
+                        <br>
+                        <button type="button" class="btn btn-warning" id="btn_file_upload" style="float:left;width:80px;margin-top:10px;" onclick="mcuFileUpload()" disabled>Upload</button>
+                        <span class="label label-success" id="mcu_file_upload_alert" style="display:none;float:left;margin-left:20px;margin-top:10px;height:33px;width:82%;;text-align:center;font-size:16px;padding-top:10px;background-color:#FFBBBB;"></span>
+                    </div>
+                </div>
+    
+                <div class="panel panel-success">
+                    <div class="panel-heading">
+                        <span style="font-size:18px;">Update MCU</span>
+                    </div>
+                    <div class="panel-body" id="mcu_setting">
+                        <div style="height:50px;">
+                            <label style="font-size:18px;">Choose Binary File:</label>
+                            <select class="form-control" id="mcu_file_selector" onchange="mcuFileChanged()"></select>
+                        </div>
+                        <br>
+                        <hr>
+                        <div style="margin-top:25px;height:285px;overflow:auto;">
+                            <table class="table table-bordered" id="target_device_info"></table>
+                        </div>
+                        <button type="button" class="btn btn-warning" id="btn_bleota" data-toggle="modal" data-target="#startToFlashMcu" style="float:left;width:80px;margin-top:10px;" disabled>Update</button>
+                    </div>
+                </div>
+            </div>            
+
+            <div class="panel panel-success" style="float:right;width:49%;height:720px;margin-top:10px;">
+                <div class="panel-heading">Logs</div>
+                <div class="panel-body">
+                    <textarea id="log_history" class="md-textarea form-control" rows="22" style="margin-top:6px;margin-bottom:6px;height:650px;"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- [+] Modal resetToDefault [+] -->
+        <div class="modal fade" id="resetToDefault" role="dialog" style="font-family:Arial,Microsoft JhengHei;">
+            <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-body">
+                    <p style="font-size:18px;">Confirm reset?</p>
+                </div>
+
+                <div class="modal-footer" style="font-size:18px;">
+                    <button type="button" class="btn btn-default" onclick="resetToDefault()">yes</button>
+                    <button type="button" class="btn btn-default" data-dismiss="modal">no</button>
+                </div>
+            </div>
+            </div>
+        </div>
+        <!-- [-] Modal resetToDefault [-] -->
+
+        <!-- [+] Modal startToFlashMcu [+] -->
+        <div class="modal fade" id="startToFlashMcu" role="dialog" style="font-family:Arial;">
+            <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-body">
+                    <p style="font-size:18px;">The browser screen will be blocked when MCU burning until it finished.<br> Are you sure to start it?</p>
+                </div>
+
+                <div class="modal-footer" style="font-size:18px;">
+                    <button type="button" class="btn btn-default" onclick="bleota()">Confirm</button>
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                </div>
+            </div>
+            </div>
+        </div>
+        <!-- [-] Modal startToFlashMcu [-] -->
+    </body>
+</html>
