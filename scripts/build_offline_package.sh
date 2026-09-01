@@ -118,7 +118,9 @@ main() {
   local source_version
   source_version="$(tr -d '\r\n' < "${VERSION_FILE}")"
   [[ "${VERSION_ARG}" == "v${source_version}" ]] || fail "Requested ${VERSION_ARG} does not match VERSION (${source_version})"
-  [[ -z "$(git -C "${REPO_ROOT}" status --porcelain --untracked-files=normal)" ]] || fail "Tracked or untracked source changes exist; commit them before building an artifact"
+  git -C "${REPO_ROOT}" diff --cached --quiet || fail "Staged source changes exist; commit them before building an artifact"
+  git -C "${REPO_ROOT}" diff --quiet --ignore-cr-at-eol || fail "Tracked source changes exist; commit them before building an artifact"
+  [[ -z "$(git -C "${REPO_ROOT}" ls-files --others --exclude-standard)" ]] || fail "Untracked source files exist; commit or ignore them before building an artifact"
 
   local arch
   arch="$(uname -m)"
