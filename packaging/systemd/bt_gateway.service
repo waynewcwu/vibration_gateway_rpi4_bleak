@@ -1,0 +1,19 @@
+[Unit]
+Description=Bluetooth Gateway Service
+After=network.target bluetooth.target
+Wants=bluetooth.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=@INSTALL_ROOT@/current/ework/Bluetooth
+Environment=PYTHONNOUSERSITE=1
+Environment=PYTHONPATH=@INSTALL_ROOT@/current/python/site-packages
+ExecStart=/usr/bin/python3 -u @INSTALL_ROOT@/current/ework/Bluetooth/bleak_v2q1.py
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

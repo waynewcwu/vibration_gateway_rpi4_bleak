@@ -1,0 +1,220 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+VERSION_ARG="${1:-}"
+DIST_DIR="${REPO_ROOT}/dist"
+FRONTEND_DIR="${REPO_ROOT}/sourcecode/ework/Bluetooth/bt_frontend"
+REQUIREMENTS_FILE="${REPO_ROOT}/requirements.txt"
+VERSION_FILE="${REPO_ROOT}/VERSION"
+MANIFEST_LIB="${SCRIPT_DIR}/lib/manifest.sh"
+TMP_DIR=""
+
+usage() {
+  echo "Usage: $0 vX.Y.Z"
+  echo "Build a Bullseye ARM64/Python 3.9 offline package under dist/."
+}
+
+fail() {
+  echo "ERROR: $*" >&2
+  exit 1
+}
+
+need_cmd() {
+  command -v "$1" >/dev/null 2>&1 || fail "Missing command: $1"
+}
+
+cleanup() {
+  if [[ -n "${TMP_DIR}" && -d "${TMP_DIR}" ]]; then
+    rm -rf "${TMP_DIR}"
+  fi
+}
+
+validate_version() {
+  [[ "${VERSION_ARG}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || fail "Version must look like v1.0.1"
+}
+
+validate_builder() {
+  [[ "$(uname -m)" == "aarch64" || "$(uname -m)" == "arm64" ]] || fail "Builder must run on ARM64/aarch64"
+  # shellcheck source=/dev/null
+  source /etc/os-release
+  [[ "${VERSION_ID:-}" == "11" && "${VERSION_CODENAME:-}" == "bullseye" ]] || fail "Builder must use Debian 11 Bullseye"
+  [[ "$(python3 -c 'import sys; print("%d.%d" % sys.version_info[:2])')" == "3.9" ]] || fail "Builder must use Python 3.9"
+  [[ "$(node -p 'process.versions.node.split(".")[0]')" == "12" ]] || fail "Builder must use Node.js 12"
+  ldd --version 2>&1 | sed -n '1p' | grep -q ' 2\.31' || fail "Builder must use glibc 2.31"
+}
+
+copy_tree() {
+  local src="$1"
+  local dst="$2"
+  mkdir -p "${dst}"
+  tar \
+    --exclude='Bluetooth/bt_frontend/node_modules' \
+    --exclude='*/node_modules' \
+    --exclude='*/__pycache__' \
+    --exclude='*.pyc' \
+    --exclude='*.pyo' \
+    --exclude='*/log/*' \
+    --exclude='*/logs/*' \
+    --exclude='.git' \
+    --exclude='.git.backup' \
+    -C "${src}" -cf - . | tar -C "${dst}" -xf -
+}
+
+build_python_runtime() {
+  local package_dir="$1"
+  local python_dir="${package_dir}/dependencies/python"
+  local site_packages="${python_dir}/site-packages"
+
+  mkdir -p "${site_packages}"
+  cp "${REQUIREMENTS_FILE}" "${package_dir}/dependencies/python/requirements.txt"
+  python3 -m pip install \
+    --disable-pip-version-check \
+    --no-compile \
+    --target "${site_packages}" \
+    -r "${REQUIREMENTS_FILE}"
+
+  PYTHONNOUSERSITE=1 PYTHONPATH="${site_packages}" python3 -c \
+    'import bleak, bluepy.btle, flask, flask_cors, modbus_tk, paho.mqtt.client, serial, websocket_server, xmodem'
+  [[ -x "${site_packages}/bluepy/bluepy-helper" ]] || fail "bluepy-helper is missing or not executable"
+  find "${site_packages}/RPi" -type f -name '_GPIO*.so' -print -quit | grep -q . || fail "RPi.GPIO native extension is missing"
+}
+
+build_node_dependencies() {
+  local package_dir="$1"
+  local tmp_dir="$2"
+  local node_build="${tmp_dir}/node-build"
+  local node_runtime="${package_dir}/dependencies/node/bt_frontend"
+  local node_dest="${node_runtime}/node_modules"
+
+  mkdir -p "${node_build}" "${node_runtime}"
+  cp "${FRONTEND_DIR}/package.json" "${node_build}/package.json"
+  cp "${FRONTEND_DIR}/package-lock.json" "${node_build}/package-lock.json"
+  cp "${FRONTEND_DIR}/package.json" "${node_runtime}/package.json"
+  cp "${FRONTEND_DIR}/package-lock.json" "${node_runtime}/package-lock.json"
+
+  (
+    cd "${node_build}"
+    npm ci --omit=dev --no-audit --fund=false
+  )
+
+  cp -a "${node_build}/node_modules" "${node_dest}"
+}
+
+write_manifest() {
+  local package_dir="$1"
+  local manifest_tmp="${TMP_DIR}/MANIFEST.txt"
+  (
+    cd "${package_dir}"
+    canonical_manifest_file_list "${package_dir}" > "${manifest_tmp}"
+    mv "${manifest_tmp}" MANIFEST.txt
+    while IFS= read -r file; do
+      sha256sum "${file}"
+    done < MANIFEST.txt > MANIFEST.sha256
+    sha256sum MANIFEST.txt >> MANIFEST.sha256
+  )
+}
+
+main() {
+  if [[ "${VERSION_ARG:-}" == "-h" || "${VERSION_ARG:-}" == "--help" ]]; then
+    usage
+    exit 0
+  fi
+
+  validate_version
+  need_cmd git
+  need_cmd tar
+  need_cmd find
+  need_cmd sed
+  need_cmd sha256sum
+  need_cmd python3
+  need_cmd npm
+  need_cmd node
+  need_cmd ldd
+
+  [[ -f "${MANIFEST_LIB}" ]] || fail "Missing ${MANIFEST_LIB}"
+  # shellcheck source=lib/manifest.sh
+  source "${MANIFEST_LIB}"
+
+  [[ -f "${REQUIREMENTS_FILE}" ]] || fail "Missing ${REQUIREMENTS_FILE}"
+  [[ -f "${VERSION_FILE}" ]] || fail "Missing ${VERSION_FILE}"
+  [[ -f "${FRONTEND_DIR}/package.json" ]] || fail "Missing frontend package.json"
+  [[ -f "${FRONTEND_DIR}/package-lock.json" ]] || fail "Missing frontend package-lock.json"
+
+  local source_version
+  source_version="$(tr -d '\r\n' < "${VERSION_FILE}")"
+  [[ "${VERSION_ARG}" == "v${source_version}" ]] || fail "Requested ${VERSION_ARG} does not match VERSION (${source_version})"
+  git -C "${REPO_ROOT}" diff --cached --quiet || fail "Staged source changes exist; commit them before building an artifact"
+  git -C "${REPO_ROOT}" diff --quiet --ignore-cr-at-eol || fail "Tracked source changes exist; commit them before building an artifact"
+  [[ -z "$(git -C "${REPO_ROOT}" ls-files --others --exclude-standard)" ]] || fail "Untracked source files exist; commit or ignore them before building an artifact"
+
+  validate_builder
+  local arch
+  arch="$(uname -m)"
+
+  local clean_version="${VERSION_ARG#v}"
+  local package_name="vibration_gateway_rpi4_bleak-${VERSION_ARG}-bullseye-arm64-py39"
+  TMP_DIR="$(mktemp -d)"
+  trap cleanup EXIT
+
+  local package_dir="${TMP_DIR}/${package_name}"
+  mkdir -p "${package_dir}/source" "${package_dir}/dependencies/python" "${package_dir}/dependencies/node" "${DIST_DIR}"
+
+  echo "[1/7] Copying source tree"
+  copy_tree "${REPO_ROOT}/sourcecode/ework" "${package_dir}/source/ework"
+
+  echo "[2/7] Copying deployment scripts and docs"
+  mkdir -p "${package_dir}/scripts" "${package_dir}/docs" "${package_dir}/systemd" "${package_dir}/config/examples" "${package_dir}/lib"
+  cp "${SCRIPT_DIR}/install_offline.sh" "${package_dir}/install_offline.sh"
+  cp "${SCRIPT_DIR}/rollback.sh" "${package_dir}/rollback.sh"
+  cp "${SCRIPT_DIR}/uninstall.sh" "${package_dir}/uninstall.sh"
+  cp "${SCRIPT_DIR}/verify_offline_package.sh" "${package_dir}/verify_offline_package.sh"
+  cp "${MANIFEST_LIB}" "${package_dir}/lib/manifest.sh"
+  cp -a "${REPO_ROOT}/packaging/systemd/." "${package_dir}/systemd/"
+  cp -a "${REPO_ROOT}/config/examples/." "${package_dir}/config/examples/"
+  cp -a "${REPO_ROOT}/docs/." "${package_dir}/docs/" 2>/dev/null || true
+  chmod +x "${package_dir}"/*.sh
+
+  echo "[3/7] Building Python runtime dependencies"
+  build_python_runtime "${package_dir}"
+
+  echo "[4/7] Building Node dependencies"
+  build_node_dependencies "${package_dir}" "${TMP_DIR}"
+
+  echo "[5/7] Writing build metadata"
+  {
+    echo "package_version=${VERSION_ARG}"
+    echo "source_version=${clean_version}"
+    echo "git_commit=$(git -C "${REPO_ROOT}" rev-parse HEAD)"
+    echo "git_branch=$(git -C "${REPO_ROOT}" branch --show-current)"
+    echo "git_dirty=false"
+    echo "target_arch=${arch}"
+    echo "target_os=debian-11-bullseye"
+    echo "target_python=3.9"
+    echo "target_node_min=12"
+    echo "target_glibc=2.31"
+    echo "python_version=$(python3 --version)"
+    echo "node_version=$(node --version)"
+    echo "npm_version=$(npm --version)"
+    echo "build_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  } > "${package_dir}/BUILD_INFO"
+  echo "${clean_version}" > "${package_dir}/VERSION"
+
+  echo "[6/7] Writing manifest and archive"
+  write_manifest "${package_dir}"
+  tar -C "${TMP_DIR}" -czf "${DIST_DIR}/${package_name}.tar.gz" "${package_name}"
+
+  echo "[7/7] Writing checksum"
+  (
+    cd "${DIST_DIR}"
+    sha256sum "${package_name}.tar.gz" > "${package_name}.tar.gz.sha256"
+    sha256sum "${package_name}.tar.gz" > SHA256SUMS
+  )
+
+  echo "Built: ${DIST_DIR}/${package_name}.tar.gz"
+  echo "Checksum: ${DIST_DIR}/${package_name}.tar.gz.sha256"
+  echo "Checksum index: ${DIST_DIR}/SHA256SUMS"
+}
+
+main "$@"
