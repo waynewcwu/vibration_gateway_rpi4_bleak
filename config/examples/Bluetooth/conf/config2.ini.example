@@ -1,9 +1,0 @@
-[Modify_flag]
-mflag = no
-
-[mac_address]
-s1 = 1;device-name;00:00:00:00:00:00
-
-[Modbus]
-ip = 127.0.0.3
-id = 1

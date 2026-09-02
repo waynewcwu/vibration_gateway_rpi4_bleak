@@ -4,6 +4,11 @@ set -euo pipefail
 INSTALL_ROOT="/opt/vibration_gateway"
 PURGE="false"
 SERVICES=(
+  frontend.service
+  backend.service
+  bt_gateway.service
+)
+LEGACY_SERVICES=(
   vibration-gateway-bt.service
   vibration-gateway-backend.service
   vibration-gateway-frontend.service
@@ -49,7 +54,7 @@ parse_args() {
 remove_services() {
   command -v systemctl >/dev/null 2>&1 || return 0
   local service
-  for service in "${SERVICES[@]}"; do
+  for service in "${SERVICES[@]}" "${LEGACY_SERVICES[@]}"; do
     systemctl stop "${service}" >/dev/null 2>&1 || true
     systemctl disable "${service}" >/dev/null 2>&1 || true
     rm -f "/etc/systemd/system/${service}"

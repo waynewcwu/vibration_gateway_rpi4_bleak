@@ -41,11 +41,13 @@ verify_dir() {
   check_file_in_dir "${dir}" "source/ework/Bluetooth/bt_webapi_v3.py"
   check_file_in_dir "${dir}" "source/ework/Bluetooth/bt_frontend/index.js"
   check_file_in_dir "${dir}" "dependencies/python/requirements.txt"
-  check_file_in_dir "${dir}" "dependencies/python/wheelhouse"
+  check_file_in_dir "${dir}" "dependencies/python/site-packages"
+  check_file_in_dir "${dir}" "dependencies/python/site-packages/bluepy/bluepy-helper"
   check_file_in_dir "${dir}" "dependencies/node/bt_frontend_node_modules"
-  check_file_in_dir "${dir}" "systemd/vibration-gateway-bt.service"
+  check_file_in_dir "${dir}" "systemd/frontend.service"
+  check_file_in_dir "${dir}" "systemd/backend.service"
+  check_file_in_dir "${dir}" "systemd/bt_gateway.service"
   check_file_in_dir "${dir}" "install_offline.sh"
-  check_file_in_dir "${dir}" "update_offline.sh"
   check_file_in_dir "${dir}" "rollback.sh"
   check_file_in_dir "${dir}" "uninstall.sh"
   check_file_in_dir "${dir}" "verify_offline_package.sh"
@@ -55,6 +57,10 @@ verify_dir() {
   grep -Fxq "package_version=v${version}" "${dir}/BUILD_INFO" || fail "BUILD_INFO package version does not match VERSION"
   grep -Fxq "source_version=${version}" "${dir}/BUILD_INFO" || fail "BUILD_INFO source version does not match VERSION"
   grep -Eq '^target_arch=(aarch64|arm64)$' "${dir}/BUILD_INFO" || fail "BUILD_INFO is not ARM64"
+  grep -Fxq 'target_os=debian-11-bullseye' "${dir}/BUILD_INFO" || fail "BUILD_INFO target OS is not Bullseye"
+  grep -Fxq 'target_python=3.9' "${dir}/BUILD_INFO" || fail "BUILD_INFO target Python is not 3.9"
+  grep -Fxq 'target_node_min=12' "${dir}/BUILD_INFO" || fail "BUILD_INFO target Node.js is not 12+"
+  grep -Fxq 'target_glibc=2.31' "${dir}/BUILD_INFO" || fail "BUILD_INFO target glibc is not 2.31"
   grep -Eq '^git_commit=[0-9a-f]{40}$' "${dir}/BUILD_INFO" || fail "BUILD_INFO has no valid Git commit"
   grep -Fxq 'git_dirty=false' "${dir}/BUILD_INFO" || fail "Artifact was not built from a clean Git worktree"
 
@@ -71,12 +77,24 @@ verify_dir() {
     fail "Source tree contains node_modules; dependencies must live under dependencies/"
   fi
 
-  find "${dir}/dependencies/python/wheelhouse" -type f -name '*.whl' -print -quit | grep -q . || fail "Python wheelhouse is empty"
+  [[ ! -e "${dir}/source/ework/ecosystem.config.js" ]] || fail "Package contains obsolete PM2 ecosystem configuration"
+  if find "${dir}/dependencies/node/bt_frontend_node_modules" -iname '*pm2*' -print -quit | grep -q .; then
+    fail "Package contains obsolete PM2 dependencies"
+  fi
+  if find "${dir}/systemd" -maxdepth 1 -type f \
+    ! -name 'frontend.service' \
+    ! -name 'backend.service' \
+    ! -name 'bt_gateway.service' \
+    -print -quit | grep -q .; then
+    fail "Package contains an unsupported systemd service"
+  fi
+
+  find "${dir}/dependencies/python/site-packages" -type f -print -quit | grep -q . || fail "Python runtime dependencies are empty"
+  find "${dir}/dependencies/python/site-packages/RPi" -type f -name '_GPIO*.so' -print -quit | grep -q . || fail "RPi.GPIO native extension is missing"
   find "${dir}/dependencies/node/bt_frontend_node_modules" -type f -print -quit | grep -q . || fail "Node dependency tree is empty"
 
-  if find "${dir}/dependencies/python/wheelhouse" -type f \( -name '*x86_64*' -o -name '*win32*' -o -name '*win_amd64*' \) -print -quit | grep -q .; then
-    fail "Python wheelhouse contains non-ARM64 platform packages"
-  fi
+  [[ ! -e "${dir}/dependencies/python/wheelhouse" ]] || fail "Package contains obsolete Python wheelhouse"
+  [[ ! -e "${dir}/update_offline.sh" ]] || fail "Package contains obsolete update wrapper"
 
   echo "Package directory OK: ${dir}"
 }

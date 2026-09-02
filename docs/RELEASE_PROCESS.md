@@ -1,83 +1,40 @@
-# Release 流程
+# Release Process
 
-## 分支
+## Prepare
 
-所有修改先從 `main` 建立 `codex/*` branch：
+1. Work on a `codex/*` branch and confirm `git status` is clean before building.
+2. Keep `VERSION` and the requested `vX.Y.Z` build argument aligned.
+3. Keep Python dependencies fully pinned in `requirements.txt` and Node dependencies locked in `package-lock.json`.
+4. Do not commit `dist/`, dependency folders, logs, credentials, or generated archives.
 
-```bash
-git switch main
-git pull
-git switch -c codex/offline-release-architecture
-```
-
-不要直接從 `main` commit 或 push 程式修改。
-
-## 版本號
-
-`VERSION` 記錄下一個要測試或準備 release 的版本，例如：
-
-```text
-1.0.1
-```
-
-建置 artifact 時使用 tag 格式：
+## Validate source
 
 ```bash
-v1.0.1
+bash -n scripts/*.sh tests/*.sh
+bash tests/test_manifest_locale.sh
 ```
 
-本次 `v1.0.1` 僅作為 local artifact build/test 版本，不建立 tag，不建立 GitHub Release。
+Run Python syntax checks and `node --check` for the retained service entrypoints before the full build.
 
-## 建置候選 artifact
+## Build
 
 ```powershell
 .\scripts\build_offline_package.ps1 -Version v1.0.1
 ```
 
-或在 ARM64 Linux：
+The builder must be Bullseye ARM64 with Python 3.9, Node.js 12, and glibc 2.31. It prepares Python `site-packages` and Node `node_modules`, then writes `BUILD_INFO`, `MANIFEST.txt`, `MANIFEST.sha256`, and the archive checksum.
+
+## Offline lifecycle
+
+Verify the archive, extract it in a Bullseye ARM64 container, and run with networking disabled:
 
 ```bash
-bash scripts/build_offline_package.sh v1.0.1
+bash scripts/verify_offline_package.sh dist/vibration_gateway_rpi4_bleak-v1.0.1-bullseye-arm64-py39.tar.gz
+bash tests/test_offline_lifecycle.sh EXTRACTED_PACKAGE_DIRECTORY
 ```
 
-建置完成後驗證：
+The lifecycle test installs with `--service-mode none`, verifies Python and Node imports, confirms no venv exists, tests normal uninstall, and tests purge.
 
-```bash
-bash scripts/verify_offline_package.sh dist/vibration_gateway_rpi4_bleak-v1.0.1-linux-arm64.tar.gz
-```
+## Publish
 
-`dist/SHA256SUMS` 與 artifact 專屬的 `.sha256` 檔都由 builder 產生。Package 內另有 `MANIFEST.sha256`，用來驗證解壓後每個檔案。
-
-## PR
-
-push branch 後建立 PR，PR 內容至少包含：
-
-- source repo 清理項目
-- 離線 build/install/update/rollback/uninstall 流程
-- artifact build 結果與限制
-- 已知 entrypoint mismatch
-- 測試紀錄
-
-## 正式 Release
-
-只有在 PR merge 且使用者明確確認版本後，才可以建立 tag 與 GitHub Release。
-
-建議步驟：
-
-```bash
-git switch main
-git pull
-git tag v1.0.1
-git push origin v1.0.1
-gh release create v1.0.1 dist/vibration_gateway_rpi4_bleak-v1.0.1-linux-arm64.tar.gz dist/vibration_gateway_rpi4_bleak-v1.0.1-linux-arm64.tar.gz.sha256 --title "v1.0.1" --notes-file RELEASE_NOTES.md
-```
-
-若 artifact 是在另一台 ARM64 builder 產生，請先確認 checksum、`BUILD_INFO`、`MANIFEST.txt`，再上傳 release asset。
-
-## 禁止事項
-
-- 不要 force push。
-- 不要改寫已發布 tag。
-- 不要刪除既有 release。
-- 不要把 `node_modules/`、wheelhouse、`dist/` commit 進 Git。
-- 不要把 local test artifact 當正式 release 上傳。
+Review `git diff`, commit and push the approved branch, and update the pull request. Create tags or GitHub Releases only after explicit confirmation and merge approval.

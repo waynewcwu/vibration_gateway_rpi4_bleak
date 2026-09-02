@@ -5,10 +5,9 @@ INSTALL_ROOT="/opt/vibration_gateway"
 TARGET_RELEASE=""
 SERVICE_MODE="systemd"
 SERVICES=(
-  vibration-gateway-bt.service
-  vibration-gateway-backend.service
-  vibration-gateway-frontend.service
-  vibration-gateway-water.service
+  backend.service
+  bt_gateway.service
+  frontend.service
 )
 
 usage() {

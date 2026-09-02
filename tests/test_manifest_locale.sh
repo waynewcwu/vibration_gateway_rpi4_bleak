@@ -53,7 +53,7 @@ main() {
     "${fixture_dir}/dependencies/node/node_modules/pkg"
   touch \
     "${fixture_dir}/VERSION" \
-    "${fixture_dir}/config/examples/Bluetooth/conf/config2.ini.example" \
+    "${fixture_dir}/config/examples/Bluetooth/conf/config.ini.example" \
     "${fixture_dir}/dependencies/node/node_modules/@scope/pkg/Alpha.js" \
     "${fixture_dir}/dependencies/node/node_modules/pkg/a.js" \
     "${fixture_dir}/dependencies/node/node_modules/pkg/$(printf '\303\244').js" \

@@ -1,3 +1,0 @@
-# Optional GUI tools in sourcecode/ework/Bluetooth import PyQt5.
-# They are not required for the headless systemd services.
-PyQt5

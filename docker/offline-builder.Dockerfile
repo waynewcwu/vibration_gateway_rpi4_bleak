@@ -1,13 +1,15 @@
-FROM --platform=$TARGETPLATFORM python:3.11-bookworm
+FROM python:3.9-bullseye
 
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         build-essential \
+        bluez \
         ca-certificates \
         curl \
         git \
+        iputils-ping \
         libdbus-1-dev \
         libglib2.0-dev \
         nodejs \

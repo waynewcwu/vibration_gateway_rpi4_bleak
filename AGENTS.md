@@ -56,15 +56,18 @@ Do not assume that python is available on PATH.
 ## Project Layout
 
 - `sourcecode/ework` is the Raspberry Pi deployment source tree for this project.
-- Preserve Python source files, shell scripts, systemd service files, PM2 config, `.ini`/`.conf` configuration files, frontend HTML/CSS/JS/images/libs, firmware `.bin` files, package manifests, and lockfiles needed to rebuild dependencies after clone.
+- Preserve Python source files, shell scripts, systemd service files, `.ini`/`.conf` configuration files, frontend HTML/CSS/JS/images/libs, firmware `.bin` files, package manifests, and lockfiles needed to rebuild dependencies after clone.
 - Keep `sourcecode/ework/Bluetooth/bt_frontend/package.json` and `sourcecode/ework/Bluetooth/bt_frontend/package-lock.json`; they are the source of truth for rebuilding frontend Node dependencies.
 - Do not commit `node_modules/`, Python virtual environments, downloaded wheels, caches, logs, local IDE folders, nested `.git` directories copied from deployed source trees, credentials, or machine-local runtime state.
 - The Raspberry Pi offline requirement is handled by release artifacts. A release artifact may include generated ARM64/aarch64 dependencies under its package `dependencies/` directory, but those generated dependencies must not be committed to Git.
+- Release artifacts target Debian/Raspberry Pi OS 11 Bullseye on ARM64, Python 3.9, Node.js 12+, and glibc 2.31. Build native dependencies on the Bullseye baseline; do not substitute a Bookworm/Python 3.11 builder.
+- Raspberry Pi installation must not require network access, pip, npm, venv, or ensurepip. Prepare Python `site-packages` and Node `node_modules` in the release artifact.
 - Keep required runtime directories with `.gitkeep` when code expects the directory to exist after clone.
 - When service files reference an entrypoint that is missing from `sourcecode/ework`, report the mismatch before changing startup behavior.
+- Runtime processes are managed only by `frontend.service`, `backend.service`, and `bt_gateway.service`. Do not add PM2, ecosystem configuration, or additional runtime services unless the user explicitly changes this architecture.
 
 ## Search and Review Hygiene
 
 - Do not recursively scan generated dependency or artifact directories unless the task is specifically about them.
-- Exclude at least these paths from normal searches: `**/node_modules/**`, `**/.venv/**`, `**/venv/**`, `**/__pycache__/**`, `dist/**`, `offline_bundle/**`, `offline_bundles/**`, `release-artifacts/**`, `release_artifacts/**`, and `sourcecode/ework/psutil/**` unless psutil itself is being maintained.
+- Exclude at least these paths from normal searches: `**/node_modules/**`, `**/.venv/**`, `**/venv/**`, `**/__pycache__/**`, `dist/**`, `offline_bundle/**`, `offline_bundles/**`, `release-artifacts/**`, and `release_artifacts/**`.
 - Prefer `rg --glob '!**/node_modules/**' --glob '!dist/**' --glob '!offline_bundle/**'` for broad searches.

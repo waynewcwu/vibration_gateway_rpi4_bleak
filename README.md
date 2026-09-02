@@ -1,136 +1,66 @@
 # vibration_gateway_rpi4_bleak
 
-Raspberry Pi 4 BLE vibration gateway project. The repository keeps maintainable source code, configuration templates, manifests, deployment scripts, and release documentation. Raspberry Pi offline runtime dependencies are built into release artifacts, not committed to Git.
+Raspberry Pi BLE vibration gateway with a Python collector/API and Node.js frontend.
 
-## Project Overview
+## Supported target
 
-This project collects BLE vibration data on Raspberry Pi, exposes local web/API functions, serves a Node.js frontend, and includes water detection utilities. The deployment source tree is `sourcecode/ework`; release packages install it under `/opt/vibration_gateway/current/ework` by default.
+- Debian/Raspberry Pi OS 11 Bullseye, 64-bit ARM (`aarch64`)
+- Python 3.9 from `/usr/bin/python3`
+- Node.js 12 or newer
+- glibc 2.31 or newer on Bullseye
+- systemd, BlueZ (`bluetoothctl`, `hciconfig`), and `ping`
 
-## Repository Structure
+Runtime is managed only by `frontend.service`, `backend.service`, and `bt_gateway.service`. PM2 is not used.
 
-- `sourcecode/ework/`: Raspberry Pi application source tree.
-- `sourcecode/ework/Bluetooth/`: BLE collector, backend API, frontend, firmware files, and BLE configuration.
-- `sourcecode/ework/water_detection/`: water detection scripts and configuration.
-- `scripts/`: offline build, install, update, rollback, uninstall, and package verification scripts.
-- `packaging/systemd/`: systemd service templates used by the offline installer.
-- `config/examples/`: sanitized configuration examples.
-- `docs/`: deployment, release, troubleshooting, and architecture notes.
-- `VERSION`: next package test version for local artifact builds.
+## Repository layout
 
-## Requirements
+- `sourcecode/ework/Bluetooth/`: application source, frontend assets, config, and firmware.
+- `service/`: field backup units for the `/home/pi/ework` layout.
+- `packaging/systemd/`: `/opt/vibration_gateway` unit templates used by the offline package.
+- `scripts/`: build, install, rollback, uninstall, and verification scripts.
+- `docs/`: architecture, deployment, and release maintenance.
 
-Development/build machine:
+Git keeps source, manifests, lockfiles, scripts, docs, service templates, and firmware. Generated dependencies, logs, caches, and release archives are not committed.
 
-- Git
-- Docker with `buildx` and ARM64 emulation enabled
-- PowerShell on Windows when using `scripts/build_offline_package.ps1`
+## Build
 
-Raspberry Pi target:
-
-- Raspberry Pi OS 64-bit / ARM64
-- Python 3.11 compatible environment
-- Node.js available on `PATH`
-- systemd
-- Bluetooth, GPIO, and required hardware permissions configured by the device image
-
-## Development
-
-Use a `codex/*` branch for changes. Keep source files, manifests, lockfiles, docs, firmware, scripts, and templates in Git. Do not commit `node_modules/`, virtual environments, wheelhouses, logs, generated archives, or local runtime state.
-
-Frontend dependencies are defined by:
-
-- `sourcecode/ework/Bluetooth/bt_frontend/package.json`
-- `sourcecode/ework/Bluetooth/bt_frontend/package-lock.json`
-
-Python runtime dependencies are listed in `requirements.txt`.
-
-## Offline Deployment Overview
-
-The source repository is intentionally clean. Offline Raspberry Pi operation is handled by a release artifact that contains:
-
-- application source under `source/ework`
-- Python wheels under `dependencies/python/wheelhouse`
-- Node dependencies under `dependencies/node/bt_frontend_node_modules`
-- systemd templates
-- installer/update/rollback/uninstall scripts
-- file-list and per-file checksum manifests
-
-## Build Offline Package
-
-From a Windows development machine with Docker:
+From Windows with Docker Desktop and ARM64 emulation:
 
 ```powershell
 .\scripts\build_offline_package.ps1 -Version v1.0.1
 ```
 
-From an ARM64 Linux builder:
+Output:
 
-```bash
-bash scripts/build_offline_package.sh v1.0.1
+```text
+dist/vibration_gateway_rpi4_bleak-v1.0.1-bullseye-arm64-py39.tar.gz
 ```
 
-The artifact is written to `dist/` and ignored by Git.
-The requested version must match `VERSION`, and the builder refuses to package uncommitted source changes so `BUILD_INFO` always identifies the exact Git commit.
+The artifact contains ready-to-run Python `site-packages` and Node `node_modules`. The Raspberry Pi does not run pip, npm, venv, or access the network during installation.
 
-## Install on Raspberry Pi
-
-Copy the `.tar.gz` and `.sha256` files to the Raspberry Pi, then:
+## Install or update
 
 ```bash
-sha256sum -c vibration_gateway_rpi4_bleak-v1.0.1-linux-arm64.tar.gz.sha256
-tar -xzf vibration_gateway_rpi4_bleak-v1.0.1-linux-arm64.tar.gz
-cd vibration_gateway_rpi4_bleak-v1.0.1-linux-arm64
+tar -xzf vibration_gateway_rpi4_bleak-v1.0.1-bullseye-arm64-py39.tar.gz
+cd vibration_gateway_rpi4_bleak-v1.0.1-bullseye-arm64-py39
 sudo ./install_offline.sh
 ```
 
-## Update
+Use the same command for initial installation and updates. Configuration, logs, and data remain under `/opt/vibration_gateway`.
 
-Extract the newer offline package and run:
-
-```bash
-sudo ./update_offline.sh
-```
-
-The installer creates a new release directory and keeps site configuration, logs, and runtime data in shared directories outside individual releases. It verifies the package before installation and automatically restores the previous `current` release if systemd service verification fails.
-
-## Rollback
-
-To switch back to the previous installed release:
+## Operate
 
 ```bash
-sudo /opt/vibration_gateway/current/scripts/rollback.sh
-```
-
-When running from an extracted package, use:
-
-```bash
+systemctl status frontend.service backend.service bt_gateway.service
 sudo ./rollback.sh
-```
-
-## Uninstall
-
-Remove services and program releases while keeping site configuration, logs, and runtime data:
-
-```bash
 sudo ./uninstall.sh
-```
-
-Permanently remove services, releases, site configuration, logs, and runtime data:
-
-```bash
 sudo ./uninstall.sh --purge
 ```
 
-## Release Process
-
-Build and validate an offline package before creating a tag. Do not tag or upload a test artifact unless the version has been approved for release.
-
-See `docs/RELEASE_PROCESS.md`.
+Normal uninstall preserves configuration, logs, and data. `--purge` permanently removes everything under `/opt/vibration_gateway`.
 
 ## Documentation
 
-- `docs/ARCHITECTURE.md`
-- `docs/OFFLINE_DEPLOYMENT.md`
-- `docs/RELEASE_PROCESS.md`
-- `docs/TROUBLESHOOTING.md`
-- `AGENTS.md`
+- `docs/ARCHITECTURE.md`: program and runtime structure.
+- `docs/DEPLOYMENT.md`: build, install, update, rollback, removal, and troubleshooting.
+- `docs/RELEASE_PROCESS.md`: maintainer verification and release steps.

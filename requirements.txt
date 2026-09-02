@@ -1,14 +1,22 @@
-# Runtime dependencies for Raspberry Pi services.
-# Build ARM64/aarch64 wheels with scripts/build_offline_package.sh before
-# installing on an offline Raspberry Pi.
-Adafruit-ADS1x15
-bleak
-bluepy
-Flask
-Flask-Cors
-modbus-tk
-paho-mqtt
-pyserial
-RPi.GPIO
-websocket-server
-xmodem
+# Locked for Debian 11 Bullseye, ARM64, and Python 3.9.
+async-timeout==5.0.1
+bleak==1.1.1
+blinker==1.9.0
+bluepy==1.3.0
+click==8.1.8
+dbus-fast==2.45.1
+Flask==3.1.3
+flask-cors==6.0.5
+importlib_metadata==8.7.1
+itsdangerous==2.2.0
+Jinja2==3.1.6
+MarkupSafe==3.0.3
+modbus_tk==1.1.5
+paho-mqtt==2.1.0
+pyserial==3.5
+RPi.GPIO==0.7.1
+typing_extensions==4.16.0
+websocket-server==0.6.4
+Werkzeug==3.1.8
+xmodem==0.5.0
+zipp==3.23.1

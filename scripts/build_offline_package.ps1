@@ -19,7 +19,7 @@ if ($Version -notmatch '^v[0-9]+\.[0-9]+\.[0-9]+$') {
 }
 
 $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
-$ImageName = "vibration-gateway-offline-builder:arm64"
+$ImageName = "vibration-gateway-offline-builder:bullseye-arm64"
 $Dockerfile = Join-Path $RepoRoot "docker\offline-builder.Dockerfile"
 
 if (-not (Test-Path $Dockerfile)) {

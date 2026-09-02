@@ -1,15 +1,14 @@
 [Unit]
-Description=Vibration Gateway frontend
-After=network-online.target vibration-gateway-backend.service
-Wants=network-online.target
+Description=Bluetooth Frontend Service
+After=network.target backend.service
 
 [Service]
 Type=simple
+User=root
 WorkingDirectory=@INSTALL_ROOT@/current/ework/Bluetooth/bt_frontend
-ExecStart=/usr/bin/env node index.js
+ExecStart=/usr/bin/env node @INSTALL_ROOT@/current/ework/Bluetooth/bt_frontend/index.js
 Restart=always
 RestartSec=5
-User=root
 Environment=NODE_ENV=production
 Environment=BT_BIN_DIR=@INSTALL_ROOT@/current/ework/Bluetooth/Bin
 Environment=BT_LOG_DIR=@INSTALL_ROOT@/logs/Bluetooth
