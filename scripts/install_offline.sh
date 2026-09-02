@@ -95,7 +95,7 @@ check_package() {
 
 preflight_dependencies() {
   local python_packages="${PACKAGE_DIR}/dependencies/python/site-packages"
-  local node_modules="${PACKAGE_DIR}/dependencies/node/bt_frontend_node_modules"
+  local node_runtime="${PACKAGE_DIR}/dependencies/node/bt_frontend"
   local bluepy_helper="${python_packages}/bluepy/bluepy-helper"
   local ldd_output=""
 
@@ -107,9 +107,11 @@ preflight_dependencies() {
       || fail "Packaged RPi.GPIO dependency is incompatible with this Raspberry Pi"
   fi
 
-  NODE_PATH="${node_modules}" node -e \
-    "['body-parser','express','formidable','ip','ping','ws'].forEach(require)" \
-    || fail "Packaged Node dependencies are incompatible with this host"
+  (
+    cd "${node_runtime}"
+    NODE_PATH="" NODE_OPTIONS="" node -e \
+      "['body-parser','express','formidable','ip','ping','ws'].forEach(require)"
+  ) || fail "Packaged Node dependencies are incompatible with this host"
   node --check "${PACKAGE_DIR}/source/ework/Bluetooth/bt_frontend/index.js" \
     || fail "Frontend JavaScript syntax check failed"
 
@@ -269,7 +271,7 @@ install_python_runtime() {
 
 install_node_deps() {
   local release_dir="$1"
-  local node_src="${PACKAGE_DIR}/dependencies/node/bt_frontend_node_modules"
+  local node_src="${PACKAGE_DIR}/dependencies/node/bt_frontend/node_modules"
   local frontend_dir="${release_dir}/ework/Bluetooth/bt_frontend"
 
   rm -rf "${frontend_dir}/node_modules"

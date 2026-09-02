@@ -85,13 +85,14 @@ build_node_dependencies() {
   local package_dir="$1"
   local tmp_dir="$2"
   local node_build="${tmp_dir}/node-build"
-  local node_dest="${package_dir}/dependencies/node/bt_frontend_node_modules"
+  local node_runtime="${package_dir}/dependencies/node/bt_frontend"
+  local node_dest="${node_runtime}/node_modules"
 
-  mkdir -p "${node_build}" "${package_dir}/dependencies/node"
+  mkdir -p "${node_build}" "${node_runtime}"
   cp "${FRONTEND_DIR}/package.json" "${node_build}/package.json"
   cp "${FRONTEND_DIR}/package-lock.json" "${node_build}/package-lock.json"
-  cp "${FRONTEND_DIR}/package.json" "${package_dir}/dependencies/node/package.json"
-  cp "${FRONTEND_DIR}/package-lock.json" "${package_dir}/dependencies/node/package-lock.json"
+  cp "${FRONTEND_DIR}/package.json" "${node_runtime}/package.json"
+  cp "${FRONTEND_DIR}/package-lock.json" "${node_runtime}/package-lock.json"
 
   (
     cd "${node_build}"

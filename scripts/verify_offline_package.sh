@@ -43,7 +43,9 @@ verify_dir() {
   check_file_in_dir "${dir}" "dependencies/python/requirements.txt"
   check_file_in_dir "${dir}" "dependencies/python/site-packages"
   check_file_in_dir "${dir}" "dependencies/python/site-packages/bluepy/bluepy-helper"
-  check_file_in_dir "${dir}" "dependencies/node/bt_frontend_node_modules"
+  check_file_in_dir "${dir}" "dependencies/node/bt_frontend/package.json"
+  check_file_in_dir "${dir}" "dependencies/node/bt_frontend/package-lock.json"
+  check_file_in_dir "${dir}" "dependencies/node/bt_frontend/node_modules"
   check_file_in_dir "${dir}" "systemd/frontend.service"
   check_file_in_dir "${dir}" "systemd/backend.service"
   check_file_in_dir "${dir}" "systemd/bt_gateway.service"
@@ -78,7 +80,7 @@ verify_dir() {
   fi
 
   [[ ! -e "${dir}/source/ework/ecosystem.config.js" ]] || fail "Package contains obsolete PM2 ecosystem configuration"
-  if find "${dir}/dependencies/node/bt_frontend_node_modules" -iname '*pm2*' -print -quit | grep -q .; then
+  if find "${dir}/dependencies/node/bt_frontend/node_modules" -iname '*pm2*' -print -quit | grep -q .; then
     fail "Package contains obsolete PM2 dependencies"
   fi
   if find "${dir}/systemd" -maxdepth 1 -type f \
@@ -91,9 +93,10 @@ verify_dir() {
 
   find "${dir}/dependencies/python/site-packages" -type f -print -quit | grep -q . || fail "Python runtime dependencies are empty"
   find "${dir}/dependencies/python/site-packages/RPi" -type f -name '_GPIO*.so' -print -quit | grep -q . || fail "RPi.GPIO native extension is missing"
-  find "${dir}/dependencies/node/bt_frontend_node_modules" -type f -print -quit | grep -q . || fail "Node dependency tree is empty"
+  find "${dir}/dependencies/node/bt_frontend/node_modules" -type f -print -quit | grep -q . || fail "Node dependency tree is empty"
 
   [[ ! -e "${dir}/dependencies/python/wheelhouse" ]] || fail "Package contains obsolete Python wheelhouse"
+  [[ ! -e "${dir}/dependencies/node/bt_frontend_node_modules" ]] || fail "Package contains obsolete Node dependency layout"
   [[ ! -e "${dir}/update_offline.sh" ]] || fail "Package contains obsolete update wrapper"
 
   echo "Package directory OK: ${dir}"

@@ -18,7 +18,7 @@ PM2, water detection, GUI programs, old backend versions, status services, and v
 
 The offline artifact targets Debian/Raspberry Pi OS 11 Bullseye on ARM64 with Python 3.9, Node.js 12+, and glibc 2.31. Native Python dependencies are built on the same Bullseye baseline.
 
-Python packages are prepared under `dependencies/python/site-packages` during the online build. Node packages are prepared under `dependencies/node/bt_frontend_node_modules`. Installation copies both trees; the Raspberry Pi does not run package managers or create a virtual environment.
+Python packages are prepared under `dependencies/python/site-packages` during the online build. Node packages are prepared under `dependencies/node/bt_frontend/node_modules`, preserving the standard Node.js lookup layout. Installation copies both trees; the Raspberry Pi does not run package managers or create a virtual environment.
 
 ## Installed layout
 
