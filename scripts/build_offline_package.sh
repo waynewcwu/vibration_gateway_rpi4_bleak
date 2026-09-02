@@ -8,6 +8,7 @@ DIST_DIR="${REPO_ROOT}/dist"
 FRONTEND_DIR="${REPO_ROOT}/sourcecode/ework/Bluetooth/bt_frontend"
 REQUIREMENTS_FILE="${REPO_ROOT}/requirements.txt"
 VERSION_FILE="${REPO_ROOT}/VERSION"
+MANIFEST_LIB="${SCRIPT_DIR}/lib/manifest.sh"
 TMP_DIR=""
 
 usage() {
@@ -85,7 +86,7 @@ write_manifest() {
   local manifest_tmp="${TMP_DIR}/MANIFEST.txt"
   (
     cd "${package_dir}"
-    find . -type f ! -name 'MANIFEST.txt' ! -name 'MANIFEST.sha256' | sort | sed 's#^\./##' > "${manifest_tmp}"
+    canonical_manifest_file_list "${package_dir}" > "${manifest_tmp}"
     mv "${manifest_tmp}" MANIFEST.txt
     while IFS= read -r file; do
       sha256sum "${file}"
@@ -109,6 +110,10 @@ main() {
   need_cmd python3
   need_cmd npm
   need_cmd node
+
+  [[ -f "${MANIFEST_LIB}" ]] || fail "Missing ${MANIFEST_LIB}"
+  # shellcheck source=lib/manifest.sh
+  source "${MANIFEST_LIB}"
 
   [[ -f "${REQUIREMENTS_FILE}" ]] || fail "Missing ${REQUIREMENTS_FILE}"
   [[ -f "${VERSION_FILE}" ]] || fail "Missing ${VERSION_FILE}"
@@ -138,12 +143,13 @@ main() {
   copy_tree "${REPO_ROOT}/sourcecode/ework" "${package_dir}/source/ework"
 
   echo "[2/7] Copying deployment scripts and docs"
-  mkdir -p "${package_dir}/scripts" "${package_dir}/docs" "${package_dir}/systemd" "${package_dir}/config/examples"
+  mkdir -p "${package_dir}/scripts" "${package_dir}/docs" "${package_dir}/systemd" "${package_dir}/config/examples" "${package_dir}/lib"
   cp "${SCRIPT_DIR}/install_offline.sh" "${package_dir}/install_offline.sh"
   cp "${SCRIPT_DIR}/update_offline.sh" "${package_dir}/update_offline.sh"
   cp "${SCRIPT_DIR}/rollback.sh" "${package_dir}/rollback.sh"
   cp "${SCRIPT_DIR}/uninstall.sh" "${package_dir}/uninstall.sh"
   cp "${SCRIPT_DIR}/verify_offline_package.sh" "${package_dir}/verify_offline_package.sh"
+  cp "${MANIFEST_LIB}" "${package_dir}/lib/manifest.sh"
   cp -a "${REPO_ROOT}/packaging/systemd/." "${package_dir}/systemd/"
   cp -a "${REPO_ROOT}/config/examples/." "${package_dir}/config/examples/"
   cp -a "${REPO_ROOT}/docs/." "${package_dir}/docs/" 2>/dev/null || true

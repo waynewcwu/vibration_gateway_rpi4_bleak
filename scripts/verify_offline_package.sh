@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TARGET="${1:-}"
+MANIFEST_LIB="${SCRIPT_DIR}/lib/manifest.sh"
 TMP_DIR=""
 
 usage() {
@@ -34,6 +36,7 @@ verify_dir() {
   check_file_in_dir "${dir}" "BUILD_INFO"
   check_file_in_dir "${dir}" "MANIFEST.txt"
   check_file_in_dir "${dir}" "MANIFEST.sha256"
+  check_file_in_dir "${dir}" "lib/manifest.sh"
   check_file_in_dir "${dir}" "source/ework/Bluetooth/bleak_v2q1.py"
   check_file_in_dir "${dir}" "source/ework/Bluetooth/bt_webapi_v3.py"
   check_file_in_dir "${dir}" "source/ework/Bluetooth/bt_frontend/index.js"
@@ -60,10 +63,7 @@ verify_dir() {
     fail "Package manifest checksum failed"
   fi
 
-  if ! (
-    cd "${dir}"
-    find . -type f ! -name 'MANIFEST.txt' ! -name 'MANIFEST.sha256' | sort | sed 's#^\./##' | diff - MANIFEST.txt >/dev/null
-  ); then
+  if ! canonical_manifest_file_list "${dir}" | diff - "${dir}/MANIFEST.txt" >/dev/null; then
     fail "Package file list does not match MANIFEST.txt"
   fi
 
@@ -110,6 +110,10 @@ main() {
     usage
     exit 0
   fi
+
+  [[ -f "${MANIFEST_LIB}" ]] || fail "Missing ${MANIFEST_LIB}"
+  # shellcheck source=lib/manifest.sh
+  source "${MANIFEST_LIB}"
 
   if [[ -d "${TARGET}" ]]; then
     verify_dir "${TARGET}"

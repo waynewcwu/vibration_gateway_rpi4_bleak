@@ -1,5 +1,17 @@
 # Troubleshooting
 
+## MANIFEST file-list 排序不一致
+
+若 verifier 回報 `Package file list does not match MANIFEST.txt`，但 diff 兩側只是順序不同，通常是 build 與 Raspberry Pi 的 `LANG`／`LC_COLLATE` 不同。
+
+目前 build 與 verify 共用 `scripts/lib/manifest.sh` 的 canonical file-list 規則，並在排序時固定使用 `LC_ALL=C`。不要移除這項設定，也不要用 host locale 直接重建 `MANIFEST.txt`。可執行以下 regression test：
+
+```bash
+bash tests/test_manifest_locale.sh
+```
+
+測試會比較 `C` 與系統所有可用的 C／en_US／en_GB UTF-8 locale；每個 locale 都必須產生完全相同的 file list。
+
 ## 建置失敗：Docker 不是 ARM64
 
 `scripts/build_offline_package.sh` 會檢查 `uname -m`，必須是 `aarch64` 或 `arm64`。Windows 開發機請使用：
